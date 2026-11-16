@@ -146,9 +146,10 @@ export function App() {
       setVoiceState("idle");
       loadData();
       await botSays(r.reply, viaVoice);
-      // Dacă vorbim și asistentul așteaptă „da” / „nu” pentru o plată, pornim singuri microfonul
-      // pentru UN răspuns; după ce l-ai spus, se oprește (pornește din nou doar dacă urmează altă confirmare).
-      if (viaVoice && r.pending && stt.supported) await listen(true);
+      // Dacă vorbim și asistentul îți pune o întrebare (sau așteaptă „da” / „nu” pentru o plată),
+      // pornim singuri microfonul pentru UN răspuns; după ce l-ai spus, se oprește.
+      const asksSomething = r.pending !== null || r.reply.trim().endsWith("?");
+      if (viaVoice && asksSomething && stt.supported) await listen(true);
     } catch {
       setBusy(false);
       setVoiceState("idle");
@@ -232,7 +233,8 @@ export function App() {
   }
 
   const micLabel =
-    voiceState === "listening" && awaitingAnswer ? "Te ascult: spune „da” sau „nu”"
+    voiceState === "listening" && awaitingAnswer && pending ? "Te ascult: spune „da” sau „nu”"
+    : voiceState === "listening" && awaitingAnswer ? "Te ascult: răspunde la întrebare"
     : voiceState === "listening" ? "Ascult… (apasă ca să oprești)"
     : voiceState === "thinking" ? "Mă gândesc…"
     : voiceState === "speaking" ? "Vorbesc… (apasă ca să vorbești tu)"
