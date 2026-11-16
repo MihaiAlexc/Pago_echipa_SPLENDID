@@ -252,11 +252,11 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
 
 ### Pas 0 — Setup proiect
 **Ce învățăm:** ce e un monorepo, ce face fiecare folder, cum pornești serverul și interfața.
-- [ ] Confirmăm stack-ul; avem cheia API Anthropic într-un `.env` (neinclus în git) sau decidem modelul simulat.
+- [x] Confirmăm stack-ul; avem cheia API Anthropic într-un `.env` (neinclus în git) sau decidem modelul simulat. → Deocamdată model simulat (`LLM_MODE=mock`); cheia rămâne întrebare deschisă.
 - [x] `git init` (folderul nu e încă repository) + `.gitignore` (cu `.env`, `node_modules`).
 - [x] Inițializăm monorepo (workspaces), TypeScript, Vitest. ESLint doar dacă rămâne timp.
 - [x] Scripturi: `dev` (web + server împreună, ex. cu `concurrently`), `test`, `build`.
-- [ ] **Test rapid de voce (20–30 min), pe telefonul real:** o pagină HTML simplă servită prin tunel HTTPS (ngrok / Cloudflare Tunnel) care face STT `ro-RO` și TTS `ro-RO`. Verificăm: telefonul are voce română pentru TTS? STT înțelege cifre („o sută optzeci și șapte”) și „da/nu”? Dacă ceva nu merge, aflăm acum, nu la Pasul 6.
+- [x] **Test rapid de voce (20–30 min), pe telefonul real:** o pagină HTML simplă servită prin tunel HTTPS (ngrok / Cloudflare Tunnel) care face STT `ro-RO` și TTS `ro-RO`. Verificăm: telefonul are voce română pentru TTS? STT înțelege cifre („o sută optzeci și șapte”) și „da/nu”? Dacă ceva nu merge, aflăm acum, nu la Pasul 6.
 
 **Gata când:** `npm run dev` pornește web + server; `npm test` rulează un test banal; testul de voce a fost făcut pe telefon și rezultatul notat în jurnal; primul commit făcut.
 
@@ -395,7 +395,7 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
 ## 14. Întrebări deschise
 
 - [ ] Există cheie API Anthropic? (necesară la Pasul 3; altfel model simulat)
-- [ ] Ce telefon se folosește la demo (Android/iPhone)?
+- [x] Ce telefon se folosește la demo (Android/iPhone)? → Android 10, Chrome (testat: STT + TTS română merg).
 - [ ] Prețurile și datele Mariei din secțiunea 6 sunt ok sau le schimbăm?
 - [ ] Pragul pentru confirmare suplimentară pe ecran (ex. 500 lei) — se decide la Pasul 2.
 - [ ] Cartea Verde din România acoperă Turcia? Ce trebuie concret pe ruta România → Bulgaria → Turcia (vinietă BG, taxe HGS în Turcia)? — de verificat din surse oficiale înainte de Pasul 4.
@@ -424,4 +424,5 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
     - STT: `not-allowed` → microfonul era blocat pentru site; apoi `aborted` (apăsări repetate). Încă nu știm cât de bine recunoaște româna.
     - TTS `interrupted` = vorbirea oprită de noi, nu e o problemă.
     - Pagina de test arată acum explicații clare pentru erori și nu mai pornește ascultarea de două ori.
-  - **Rămâne:** repetat STT pe telefon după ce se permite microfonul (cifre, „da/nu”).
+  - **Test voce, a doua încercare (microfon permis):** ✅ STT înțelege în română atât cuvintele, cât și cifrele. Vocea e confirmată pe Chrome Android → Pasul 0 **gata**.
+- **Următorul pas:** Pas 1 (tipuri comune, date seed, mock Pago).
