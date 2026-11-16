@@ -87,6 +87,14 @@ describe("confirm", () => {
     expect(bill("b-curent").status).toBe("unpaid");
   });
 
+  it("token expirat, după ce frontend-ul a cerut plata în așteptare → tot TOKEN_EXPIRED", () => {
+    const { conf, advance } = setup();
+    const { token } = conf.prepare(S, CURENT);
+    advance(TOKEN_TTL_MS + 1);
+    expect(conf.getPendingForClient(S)).toBeNull(); // aici token-ul e scos din așteptare
+    expectCode(() => conf.confirm(S, token, "button"), "TOKEN_EXPIRED");
+  });
+
   it("suma modificată între pregătire și confirmare → AMOUNT_CHANGED, nu se plătește", () => {
     const { conf, bill } = setup();
     const { token } = conf.prepare(S, CURENT);

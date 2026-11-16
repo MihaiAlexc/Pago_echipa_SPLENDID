@@ -59,7 +59,8 @@ export type TurnOutcome =
  */
 export class PaymentConfirmation {
   private pendingBySession = new Map<string, Pending>();
-  private usedTokens = new Set<string>();
+  /** Token-uri care nu mai sunt valabile, și de ce (ca mesajul de eroare să fie corect). */
+  private usedTokens = new Map<string, "used" | "expired">();
   private readonly nowMs: () => number;
 
   constructor(private store: PagoStore, options: { nowMs?: () => number } = {}) {
@@ -97,13 +98,15 @@ export class PaymentConfirmation {
 
   /** Confirmă cu token (butonul de pe ecran, sau intern după un „da” vocal). Aici se mută banii. */
   confirm(sessionId: string, token: string, via: ConfirmVia): Payment {
-    if (this.usedTokens.has(token)) throw new ConfirmError("TOKEN_USED", "Plata asta a fost deja confirmată sau anulată.");
+    const spent = this.usedTokens.get(token);
+    if (spent === "expired") throw new ConfirmError("TOKEN_EXPIRED", "Confirmarea a expirat. Te rog să pregătim plata din nou.");
+    if (spent === "used") throw new ConfirmError("TOKEN_USED", "Plata asta a fost deja confirmată sau anulată.");
 
     const pending = this.pendingBySession.get(sessionId);
     if (!pending || pending.token !== token) throw new ConfirmError("TOKEN_INVALID", "Nu există o plată în așteptare cu acest token.");
 
     if (this.nowMs() > pending.expiresAt) {
-      this.discard(pending);
+      this.discard(pending, "expired");
       throw new ConfirmError("TOKEN_EXPIRED", "Confirmarea a expirat. Te rog să pregătim plata din nou.");
     }
 
@@ -166,7 +169,7 @@ export class PaymentConfirmation {
 
   /** La resetarea poveștii: nicio plată veche nu mai rămâne în așteptare. */
   clearAll(): void {
-    for (const p of this.pendingBySession.values()) this.usedTokens.add(p.token);
+    for (const p of this.pendingBySession.values()) this.usedTokens.set(p.token, "used");
     this.pendingBySession.clear();
   }
 
@@ -176,14 +179,14 @@ export class PaymentConfirmation {
     const p = this.pendingBySession.get(sessionId);
     if (!p) return null;
     if (this.nowMs() > p.expiresAt) {
-      this.discard(p);
+      this.discard(p, "expired");
       return null;
     }
     return p;
   }
 
-  private discard(p: Pending) {
-    this.usedTokens.add(p.token);
+  private discard(p: Pending, reason: "used" | "expired" = "used") {
+    this.usedTokens.set(p.token, reason);
     if (this.pendingBySession.get(p.sessionId)?.token === p.token) this.pendingBySession.delete(p.sessionId);
   }
 

@@ -115,6 +115,10 @@ describe("API Pago simulat", () => {
     const paid = await post("/api/payments/prepare", { sessionId: "s1", items: [{ kind: "bill", billId: "b-internet" }] });
     expect(paid.statusCode).toBe(409);
     expect(paid.json().error).toBe("BILL_ALREADY_PAID");
+
+    const empty = await post("/api/payments/prepare", { sessionId: "s1", items: [] });
+    expect(empty.statusCode).toBe(400);
+    expect(empty.json().error).toBe("EMPTY_PAYMENT");
   });
 
   it("POST /api/dev/reset schimbă varianta", async () => {

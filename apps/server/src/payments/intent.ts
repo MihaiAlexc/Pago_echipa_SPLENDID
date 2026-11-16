@@ -40,7 +40,7 @@ const NO = new Set([
   "nu plati nimic",
   "anuleaza",
   "anuleaza plata",
-  "nu anuleaza",
+  // ATENȚIE: „nu anulează” NU e aici — înseamnă „nu, nu anula”, deci e ambiguu → "other".
   "renunt",
   "renunta",
   "stop",

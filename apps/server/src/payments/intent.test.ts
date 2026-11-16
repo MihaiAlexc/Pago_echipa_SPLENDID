@@ -28,5 +28,7 @@ describe("classifyConfirmation", () => {
     "nu știu",
     "plătește o sută de lei la gaz",
     "da și factura la apă",
+    "nu anulează", // = „nu, nu anula” → ambiguu, nu trebuie să anuleze
+    "nu, nu anula",
   ])("„%s” → other (nu confirmă)", (t) => expect(classifyConfirmation(t)).toBe("other"));
 });

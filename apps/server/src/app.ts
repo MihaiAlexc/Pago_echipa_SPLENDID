@@ -36,7 +36,11 @@ export function buildApp(options: AppOptions = {}) {
       return reply.status(CONFIRM_STATUS[err.code] ?? 409).send({ error: err.code, message: err.message });
     }
     if (err instanceof PagoError) {
-      const status = err.code.endsWith("NOT_FOUND") ? 404 : 409;
+      const status = err.code.endsWith("NOT_FOUND")
+        ? 404 // nu există
+        : err.code === "EMPTY_PAYMENT" || err.code === "DUPLICATE_ITEM"
+          ? 400 // cerere greșită
+          : 409; // conflict cu starea datelor (ex. factură deja plătită)
       return reply.status(status).send({ error: err.code, message: err.message });
     }
     const e = err as { statusCode?: number; message?: string };
