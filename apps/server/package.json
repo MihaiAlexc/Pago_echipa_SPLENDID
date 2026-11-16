@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@pago/shared": "*",
     "fastify": "^5.12.8"
   },

@@ -2,6 +2,17 @@ import Fastify from "fastify";
 import type { BillStatus, PaymentRequestItem, ProductType, SeedVariant } from "@pago/shared";
 import { PagoError, PagoStore } from "./mock/store.ts";
 import { ConfirmError, PaymentConfirmation } from "./payments/confirmation.ts";
+import { Agent } from "./agent/agent.ts";
+import { ClaudeClient } from "./agent/claude.ts";
+import type { LlmClient } from "./agent/llm.ts";
+import { ScriptedLlm } from "./agent/scripted.ts";
+
+/** Modelul real doar dacă e cerut explicit și avem cheie; altfel modelul simulat. */
+export function createLlmFromEnv(): LlmClient {
+  if (process.env.LLM_MODE === "claude" && process.env.ANTHROPIC_API_KEY) return new ClaudeClient();
+  if (process.env.LLM_MODE === "claude") console.warn("LLM_MODE=claude, dar lipsește ANTHROPIC_API_KEY → folosesc modelul simulat.");
+  return new ScriptedLlm();
+}
 
 const CONFIRM_STATUS: Record<string, number> = {
   NO_PENDING_PAYMENT: 404,
@@ -19,6 +30,7 @@ const VARIANTS: SeedVariant[] = ["demo", "all-good", "rca-expired", "no-bills"];
 export interface AppOptions {
   store?: PagoStore;
   confirmation?: PaymentConfirmation;
+  llm?: LlmClient;
 }
 
 /**
@@ -29,6 +41,7 @@ export function buildApp(options: AppOptions = {}) {
   const app = Fastify({ logger: false });
   const store = options.store ?? new PagoStore();
   const confirmation = options.confirmation ?? new PaymentConfirmation(store);
+  const agent = new Agent({ store, confirmation, llm: options.llm ?? createLlmFromEnv() });
 
   // Erorile de business devin 4xx cu un cod clar; restul rămân 500.
   app.setErrorHandler((err, _req, reply) => {
@@ -50,8 +63,25 @@ export function buildApp(options: AppOptions = {}) {
   // Toate rutele stau sub /api; frontend-ul (Vite) le trimite aici prin proxy.
   app.get("/api/health", async () => ({
     ok: true,
-    llmMode: process.env.LLM_MODE ?? "mock",
+    llmMode: agent.llmName,
   }));
+
+  // ---------- Conversația cu asistentul ----------
+
+  app.post<{ Body: { sessionId?: string; message?: string } }>("/api/chat", async (req, reply) => {
+    const { sessionId, message } = req.body ?? {};
+    if (!sessionId || typeof message !== "string" || !message.trim()) {
+      return reply.status(400).send({ error: "BAD_REQUEST", message: "Lipsește sessionId sau message." });
+    }
+    const result = await agent.chat(sessionId, message.trim());
+    // Frontend-ul primește răspunsul, plata în așteptare (cu token, pentru buton) și numele tool-urilor.
+    return {
+      reply: result.reply,
+      outcome: result.outcome,
+      pending: result.pending,
+      actions: result.toolCalls.map((c) => c.name),
+    };
+  });
 
   // ---------- API Pago simulat (doar citire) ----------
 
@@ -125,6 +155,7 @@ export function buildApp(options: AppOptions = {}) {
     }
     store.reset(variant);
     confirmation.clearAll();
+    agent.clearSessions();
     return { ok: true, variant };
   });
 

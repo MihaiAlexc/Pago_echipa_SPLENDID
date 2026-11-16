@@ -10,6 +10,7 @@
     "dev": "concurrently -n server,web -c blue,green \"npm run dev -w @pago/server\" \"npm run dev -w @pago/web\"",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:llm": "vitest run --config vitest.llm.config.ts",
     "tunnel": "cloudflared tunnel --url http://localhost:5173 --no-autoupdate",
     "build": "npm run build -w @pago/server && npm run build -w @pago/web"
   },

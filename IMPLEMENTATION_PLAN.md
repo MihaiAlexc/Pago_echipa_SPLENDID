@@ -278,10 +278,10 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
 
 ### Pas 3 — Agentul (LLM + tool calling), în text
 **Ce învățăm:** cum „decide" modelul ce tool să apeleze; cum arată bucla cerere → tool → rezultat → răspuns; ce e promptul de sistem.
-- [ ] Prompt de sistem în română (ton scurt, mereu confirmă plățile, nu inventează).
-- [ ] Bucla de tool calling cu tool-urile din secțiunea 9.
-- [ ] Endpoint `POST /chat` (mesaj + istoric → răspuns).
-- [ ] Dialogurile D1, D2, D5, D6 devin teste în `tests/dialogues/`, pe **două niveluri**:
+- [x] Prompt de sistem în română (ton scurt, mereu confirmă plățile, nu inventează).
+- [x] Bucla de tool calling cu tool-urile din secțiunea 9 (fără `run_trip_checklist` / `get_expiring_items`, care vin la Pasul 4).
+- [x] Endpoint `POST /api/chat` (sessionId + mesaj → răspuns; istoricul stă pe server).
+- [x] Dialogurile D1, D2, D5, D6 devin teste în `tests/dialogues/`, pe **două niveluri** (evaluarea cu modelul real e scrisă, dar nerulată: nu avem încă cheie):
   - **Teste deterministe** (în `npm test`): LLM simulat, cu apeluri de tool scriptate; verifică ordinea tool-urilor și regulile de siguranță. Trebuie să treacă mereu.
   - **Evaluare cu modelul real** (`npm run test:llm`, rulată manual): aceleași dialoguri; verificăm acțiunile, nu formulările. Poate eșua ocazional → ajustăm promptul.
 
@@ -439,3 +439,11 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
   - Rute: `POST /api/payments/prepare`, `GET /api/payments/pending`, `POST /api/payments/confirm` (buton), `POST /api/payments/cancel`.
   - 78 de teste trec; build OK; flux verificat și pe serverul pornit.
 - **Următorul pas:** Pas 3 (agentul LLM + tool calling, în text). Încă deschis: cheia API Anthropic (altfel model simulat).
+- **2026-11-16 — Fix-uri după verificare:** „nu anulează” nu mai anulează plata (e ambiguu → merge la LLM); mesaj corect la token expirat; 400 pentru cereri de plată goale/duplicate.
+- **2026-11-16 — Pas 3 gata (cu modelul simulat):**
+  - `apps/server/src/agent/`: `tools.ts` (7 tool-uri; `prepare_payment` NU întoarce token-ul), `prompt.ts` (prompt de sistem în română), `agent.ts` (bucla: confirmare în cod → LLM → tool-uri → răspuns; la eroare, istoricul revine și nu se plătește nimic), `llm.ts` (interfață comună), `claude.ts` (Claude real, `claude-sonnet-5-5`, effort `low`, fallback automat la refuz), `scripted.ts` (modelul simulat).
+  - Backend-ul îi transmite modelului ce a decis în cod (confirmat / anulat / cere buton) într-un bloc `<eveniment_aplicatie>`.
+  - `POST /api/chat` → `{ reply, outcome, pending, actions }`. `LLM_MODE=claude` + `ANTHROPIC_API_KEY` în `.env` → Claude real; altfel simulare.
+  - Teste: `tests/dialogues/dialogues.test.ts` (D1, D2, D5, D6 + siguranță + erori LLM, cu simularea) — trec. `npm run test:llm` (Claude real) — scris, sărit fără cheie.
+  - 95 de teste trec; build OK; D1 verificat live prin `/api/chat`.
+- **Următorul pas:** Pas 4 (motorul de scenarii: Turcia, apoi termene care expiră). Încă deschis: cheia API Anthropic.
