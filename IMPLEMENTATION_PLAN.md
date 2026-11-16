@@ -253,7 +253,7 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
 ### Pas 0 — Setup proiect
 **Ce învățăm:** ce e un monorepo, ce face fiecare folder, cum pornești serverul și interfața.
 - [ ] Confirmăm stack-ul; avem cheia API Anthropic într-un `.env` (neinclus în git) sau decidem modelul simulat.
-- [ ] `git init` (folderul nu e încă repository) + `.gitignore` (cu `.env`, `node_modules`).
+- [x] `git init` (folderul nu e încă repository) + `.gitignore` (cu `.env`, `node_modules`).
 - [x] Inițializăm monorepo (workspaces), TypeScript, Vitest. ESLint doar dacă rămâne timp.
 - [x] Scripturi: `dev` (web + server împreună, ex. cu `concurrently`), `test`, `build`.
 - [ ] **Test rapid de voce (20–30 min), pe telefonul real:** o pagină HTML simplă servită prin tunel HTTPS (ngrok / Cloudflare Tunnel) care face STT `ro-RO` și TTS `ro-RO`. Verificăm: telefonul are voce română pentru TTS? STT înțelege cifre („o sută optzeci și șapte”) și „da/nu”? Dacă ceva nu merge, aflăm acum, nu la Pasul 6.
@@ -417,4 +417,6 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
   - Monorepo gata: `apps/server` (Fastify, `GET /api/health`), `apps/web` (React + Vite, proxy `/api` → `:3001`), `packages/shared` (`formatLei`). `npm run dev`, `npm test` (2 teste), `npm run build` merg.
   - Portul serverului e `SERVER_PORT` (nu `PORT`), ca să nu se ciocnească cu portul web.
   - Pagina de test de voce: `http://localhost:5173/voice-test.html`. Pe PC-ul de dezvoltare (Windows) nu există voce TTS română → trebuie verificat pe telefon.
-  - **Rămâne:** git nu e instalat (deci nici `git init`/commit); tunel HTTPS (nici `cloudflared`, nici `ngrok` nu sunt instalate); testul de voce pe telefon.
+  - Instalate Git și `cloudflared` (winget). Repo inițializat pe `main`, primele commit-uri făcute.
+  - Tunel HTTPS: `npm run dev` + `npm run tunnel` → URL `https://<ceva>.trycloudflare.com` (se schimbă la fiecare pornire). Verificat: pagina și `/api` merg prin tunel.
+  - **Rămâne:** testul de voce pe telefon (Chrome Android) → rezultatul se notează aici.
