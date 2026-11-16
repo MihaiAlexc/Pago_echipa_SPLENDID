@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import type { BillStatus, PaymentRequestItem, ProductType, SeedVariant } from "@pago/shared";
-import { PagoError, PagoStore, type NewBillInput } from "./mock/store.ts";
+import { PagoError, PagoStore, type DocumentInput, type NewBillInput, type VehicleInput } from "./mock/store.ts";
 import { ConfirmError, PaymentConfirmation } from "./payments/confirmation.ts";
 import { Agent } from "./agent/agent.ts";
 import { ClaudeClient } from "./agent/claude.ts";
@@ -51,7 +51,7 @@ export function buildApp(options: AppOptions = {}) {
     if (err instanceof PagoError) {
       const status = err.code.endsWith("NOT_FOUND")
         ? 404 // nu există
-        : err.code === "EMPTY_PAYMENT" || err.code === "DUPLICATE_ITEM" || err.code === "INVALID_BILL"
+        : ["EMPTY_PAYMENT", "DUPLICATE_ITEM", "INVALID_BILL", "INVALID_CAR", "INVALID_DOCUMENT"].includes(err.code)
           ? 400 // cerere greșită
           : 409; // conflict cu starea datelor (ex. factură deja plătită)
       return reply.status(status).send({ error: err.code, message: err.message });
@@ -113,6 +113,36 @@ export function buildApp(options: AppOptions = {}) {
   });
 
   app.get("/api/vehicles", async () => store.getVehicles());
+
+  // ---------- Mașina mea: detalii + acte, editabile din pagină ----------
+
+  /** Tot ce ține de mașină, într-un singur răspuns (pentru secțiunea „Mașina mea”). */
+  app.get("/api/car", async () => {
+    const vehicle = store.getVehicles()[0] ?? null;
+    return {
+      vehicle,
+      policies: vehicle ? store.getPolicies(vehicle.id) : [],
+      vignettes: vehicle ? store.getVignettes(vehicle.id) : [],
+      services: store.getServices(),
+    };
+  });
+
+  app.post<{ Body: VehicleInput }>("/api/vehicles", async (req, reply) =>
+    reply.status(201).send(store.addVehicle(req.body ?? ({} as VehicleInput))),
+  );
+
+  app.put<{ Params: { id: string }; Body: VehicleInput }>("/api/vehicles/:id", async (req) =>
+    store.updateVehicle(req.params.id, req.body ?? ({} as VehicleInput)),
+  );
+
+  app.post<{ Body: DocumentInput }>("/api/documents", async (req, reply) =>
+    reply.status(201).send(store.addDocument(req.body ?? ({} as DocumentInput))),
+  );
+
+  app.delete<{ Params: { id: string } }>("/api/documents/:id", async (req) => {
+    store.removeDocument(req.params.id);
+    return { ok: true };
+  });
 
   app.get<{ Querystring: { vehicleId?: string } }>("/api/policies", async (req) =>
     store.getPolicies(req.query.vehicleId),

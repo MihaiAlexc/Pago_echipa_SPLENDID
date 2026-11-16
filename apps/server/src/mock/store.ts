@@ -12,7 +12,7 @@ import {
   type ProductType,
   type SeedVariant,
 } from "@pago/shared";
-import { createSeed } from "./seed.ts";
+import { createSeed, RCA_WITH_TR, STANDARD_RCA_COUNTRIES } from "./seed.ts";
 
 export type PagoErrorCode =
   | "BILL_NOT_FOUND"
@@ -21,7 +21,26 @@ export type PagoErrorCode =
   | "VEHICLE_NOT_FOUND"
   | "EMPTY_PAYMENT"
   | "DUPLICATE_ITEM"
-  | "INVALID_BILL";
+  | "INVALID_BILL"
+  | "INVALID_CAR"
+  | "INVALID_DOCUMENT"
+  | "DOCUMENT_NOT_FOUND";
+
+/** Detaliile mașinii, editate de utilizator. */
+export interface VehicleInput {
+  plate: string;
+  make: string;
+  model: string;
+  vin?: string;
+}
+
+/** Un act adăugat manual: RCA, rovinietă / vinietă, roaming sau cartelă. */
+export type DocumentInput =
+  | { kind: "rca"; vehicleId?: string; validUntil: IsoDate; coversTurkey?: boolean }
+  | { kind: "vignette"; vehicleId?: string; country: "RO" | "BG"; validUntil: IsoDate }
+  | { kind: "roaming" | "sim"; country: string; validUntil: IsoDate };
+
+const isIsoDate = (s: unknown) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
 
 /** Ce trimite utilizatorul când adaugă o factură. */
 export interface NewBillInput {
@@ -109,6 +128,75 @@ export class PagoStore {
     const i = this.data.bills.findIndex((b) => b.id === id);
     if (i < 0) throw new PagoError("BILL_NOT_FOUND", "Nu am găsit factura.");
     this.data.bills.splice(i, 1);
+  }
+
+  // ---------- Mașina și actele ei, editate de utilizator din pagină ----------
+
+  private cleanVehicle(input: VehicleInput) {
+    const plate = String(input.plate ?? "").trim().toUpperCase().slice(0, 15);
+    const make = String(input.make ?? "").trim().slice(0, 30);
+    const model = String(input.model ?? "").trim().slice(0, 30);
+    const vin = String(input.vin ?? "").trim().toUpperCase().slice(0, 17);
+    if (!plate) throw new PagoError("INVALID_CAR", "Lipsește numărul de înmatriculare.");
+    if (!make || !model) throw new PagoError("INVALID_CAR", "Completează marca și modelul.");
+    return { plate, make, model, vin };
+  }
+
+  /** Adaugă o mașină (dacă utilizatorul nu are încă una). */
+  addVehicle(input: VehicleInput) {
+    const v = { id: `v-${Date.now().toString(36)}`, type: "car" as const, ...this.cleanVehicle(input) };
+    this.data.vehicles.push(v);
+    return v;
+  }
+
+  /** Modifică detaliile mașinii. */
+  updateVehicle(id: string, input: VehicleInput) {
+    const v = this.data.vehicles.find((x) => x.id === id);
+    if (!v) throw new PagoError("VEHICLE_NOT_FOUND", "Nu am găsit mașina.");
+    Object.assign(v, this.cleanVehicle(input));
+    return v;
+  }
+
+  /** Adaugă un act pe care utilizatorul îl are deja (cumpărat în altă parte). */
+  addDocument(input: DocumentInput) {
+    if (!isIsoDate(input.validUntil)) throw new PagoError("INVALID_DOCUMENT", "Data de valabilitate nu e validă.");
+    const today = this.today();
+    const id = `${input.kind}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+
+    if (input.kind === "rca") {
+      const vehicle = this.resolveVehicle(input.vehicleId);
+      const countries = input.coversTurkey ? RCA_WITH_TR : STANDARD_RCA_COUNTRIES;
+      const policy = { id, type: "RCA" as const, vehicleId: vehicle.id, validFrom: today, validUntil: input.validUntil, countries: [...countries] };
+      this.data.policies.push(policy);
+      return policy;
+    }
+    if (input.kind === "vignette") {
+      if (input.country !== "RO" && input.country !== "BG") throw new PagoError("INVALID_DOCUMENT", "Țara vinietei trebuie să fie RO sau BG.");
+      const vehicle = this.resolveVehicle(input.vehicleId);
+      const vignette = { id, vehicleId: vehicle.id, country: input.country, validFrom: today, validUntil: input.validUntil };
+      this.data.vignettes.push(vignette);
+      return vignette;
+    }
+    if (input.kind === "roaming" || input.kind === "sim") {
+      const country = String(input.country ?? "").trim().toUpperCase();
+      if (!/^[A-Z]{2}$/.test(country)) throw new PagoError("INVALID_DOCUMENT", "Țara trebuie dată ca cod de 2 litere (ex. TR).");
+      const service = { id, type: input.kind, country, validFrom: today, validUntil: input.validUntil };
+      this.data.services.push(service);
+      return service;
+    }
+    throw new PagoError("INVALID_DOCUMENT", "Tip de act necunoscut.");
+  }
+
+  /** Șterge un act (RCA, vinietă, roaming sau cartelă) după id. */
+  removeDocument(id: string): void {
+    for (const list of [this.data.policies, this.data.vignettes, this.data.services] as { id: string }[][]) {
+      const i = list.findIndex((x) => x.id === id);
+      if (i >= 0) {
+        list.splice(i, 1);
+        return;
+      }
+    }
+    throw new PagoError("DOCUMENT_NOT_FOUND", "Nu am găsit actul.");
   }
 
   getVehicles() {

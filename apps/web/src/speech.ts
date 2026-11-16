@@ -12,7 +12,8 @@ export interface SpeechToText {
 
 export interface TextToSpeech {
   readonly supported: boolean;
-  speak(text: string): Promise<void>;
+  /** Citește textul. `onProgress(n)` = câte caractere au fost rostite până acum (pentru textul care apare treptat). */
+  speak(text: string, onProgress?: (chars: number) => void): Promise<void>;
   stop(): void;
 }
 
@@ -109,8 +110,11 @@ export class BrowserTextToSpeech implements TextToSpeech {
       ?? voices.find((v) => v.lang.toLowerCase().startsWith(this.lang.slice(0, 2).toLowerCase()));
   }
 
-  speak(text: string): Promise<void> {
-    if (!this.supported || !text) return Promise.resolve();
+  speak(text: string, onProgress?: (chars: number) => void): Promise<void> {
+    if (!this.supported || !text) {
+      onProgress?.(text.length);
+      return Promise.resolve();
+    }
     speechSynthesis.cancel();
     return new Promise((resolve) => {
       const u = new SpeechSynthesisUtterance(text);
@@ -118,8 +122,53 @@ export class BrowserTextToSpeech implements TextToSpeech {
       const v = this.voice();
       if (v) u.voice = v;
       u.rate = 1;
-      u.onend = () => resolve();
-      u.onerror = () => resolve(); // întreruperea nu e o eroare
+
+      let done = false;
+      let gotBoundary = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let startedAt = 0;
+
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        clearTimeout(startGuard);
+        onProgress?.(text.length);
+        resolve();
+      };
+
+      // Plan B: unele voci (ex. cele din cloud pe Android) nu trimit poziția cuvintelor.
+      // Atunci arătăm textul în ritmul estimat al vorbirii (~14 caractere pe secundă).
+      const tick = () => {
+        if (done || gotBoundary) return;
+        const chars = Math.floor(((performance.now() - startedAt) / 1000) * 14);
+        onProgress?.(Math.min(chars, text.length - 1));
+        timer = setTimeout(tick, 80);
+      };
+
+      u.onstart = () => {
+        startedAt = performance.now();
+        clearTimeout(startGuard);
+        tick();
+      };
+      // Poziția exactă a cuvântului rostit: arătăm textul până la sfârșitul lui.
+      u.onboundary = (e) => {
+        gotBoundary = true;
+        clearTimeout(timer);
+        const end = text.indexOf(" ", e.charIndex + 1);
+        onProgress?.(end === -1 ? text.length : end);
+      };
+      u.onend = finish;
+      u.onerror = finish; // întreruperea nu e o eroare
+
+      // Dacă vocea nu pornește deloc (ex. browserul o blochează), arătăm tot textul.
+      const startGuard = setTimeout(() => {
+        if (!startedAt) {
+          speechSynthesis.cancel();
+          finish();
+        }
+      }, 2500);
+
       speechSynthesis.speak(u);
     });
   }

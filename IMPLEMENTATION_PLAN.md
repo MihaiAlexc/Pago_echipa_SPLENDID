@@ -467,3 +467,8 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
   - **Notă:** în povestea Mariei, RCA-ul expiră în 6 zile, iar „săptămâna viitoare” = peste 7 zile, deci asistentul spune corect „înainte de plecare” (nu „în timpul călătoriei”, ca în textul inițial D3).
   - 140 de teste trec; build OK; D3 și D4 verificate live.
 - **Următorul pas:** Pas 7 (accesibilitate, corecturi) / Pas 8 (teste de robustețe). Pașii 5 și 6 sunt în mare parte făcuți (pagina, chat, voce); rămâne testul pe telefon.
+- **2026-11-16 — „Mașina mea” + vocea asistentului:**
+  - Tab-uri **Facturi / Mașina mea**. În „Mașina mea”: detaliile mașinii (număr, marcă, model, serie șasiu — editabile, sau adăugare dacă lipsește) și **actele**: RCA (cu/fără Turcia), rovinietă, vinietă Bulgaria, roaming / cartelă Turcia, cu stare (valabil / expiră curând / expirat), adăugare și ștergere. Asistentul folosește exact aceste date (testat).
+  - Server: `GET /api/car`, `POST /api/vehicles`, `PUT /api/vehicles/:id`, `POST /api/documents`, `DELETE /api/documents/:id` (cu validare).
+  - Buton mare **„Pornește vocea asistentului”**: când e pornită, răspunsurile sunt citite cu voce și **textul apare cuvânt cu cuvânt, sincronizat cu vorbirea** (evenimentele `boundary`; dacă vocea nu le trimite — ex. voci cloud pe Android — textul apare în ritmul estimat al vorbirii). Buton „Oprește” și 🔊 pe fiecare mesaj ca să-l reasculți. Cititoarele de ecran primesc textul complet.
+  - 142 de teste trec; verificat în browser (editare mașină, sincronizare text–voce). **De verificat pe telefon** (vocea română de pe Android).

@@ -139,6 +139,36 @@ describe("API Pago simulat", () => {
     expect((await get("/api/bills")).body).toHaveLength(4);
   });
 
+  it("Mașina mea: GET /api/car, modificare mașină, adăugare și ștergere acte", async () => {
+    const { app, get } = setup();
+    const car = (await get("/api/car")).body;
+    expect(car.vehicle).toMatchObject({ plate: "B-123-ABC", make: "Dacia" });
+    expect(car.policies).toHaveLength(1);
+    expect(car.vignettes).toHaveLength(1);
+
+    const upd = await app.inject({ method: "PUT", url: "/api/vehicles/v1", payload: { plate: "cj-99-xyz", make: "Skoda", model: "Octavia" } });
+    expect(upd.statusCode).toBe(200);
+    expect(upd.json().plate).toBe("CJ-99-XYZ");
+    expect((await app.inject({ method: "PUT", url: "/api/vehicles/v1", payload: { plate: "", make: "X", model: "Y" } })).statusCode).toBe(400);
+
+    const rca = await app.inject({ method: "POST", url: "/api/documents", payload: { kind: "rca", validUntil: "2027-11-16", coversTurkey: true } });
+    expect(rca.statusCode).toBe(201);
+    expect(rca.json().countries).toContain("TR");
+
+    const vg = await app.inject({ method: "POST", url: "/api/documents", payload: { kind: "vignette", country: "BG", validUntil: "2026-12-01" } });
+    const roaming = await app.inject({ method: "POST", url: "/api/documents", payload: { kind: "roaming", country: "tr", validUntil: "2026-12-01" } });
+    expect(roaming.json().country).toBe("TR");
+
+    const after = (await get("/api/car")).body;
+    expect(after.policies).toHaveLength(2);
+    expect(after.vignettes.map((v: { country: string }) => v.country)).toEqual(["RO", "BG"]);
+    expect(after.services).toHaveLength(1);
+
+    expect((await app.inject({ method: "DELETE", url: `/api/documents/${vg.json().id}` })).statusCode).toBe(200);
+    expect((await app.inject({ method: "DELETE", url: `/api/documents/${vg.json().id}` })).statusCode).toBe(404);
+    expect((await app.inject({ method: "POST", url: "/api/documents", payload: { kind: "rca", validUntil: "mâine" } })).statusCode).toBe(400);
+  });
+
   it("POST /api/dev/reset schimbă varianta", async () => {
     const { app, get } = setup();
     const res = await app.inject({ method: "POST", url: "/api/dev/reset", payload: { variant: "no-bills" } });

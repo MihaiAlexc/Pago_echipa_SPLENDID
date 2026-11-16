@@ -145,6 +145,22 @@ describe("mașina: RCA și rovinietă", () => {
   });
 });
 
+describe("datele editate în „Mașina mea” sunt folosite de asistent", () => {
+  it("număr nou de înmatriculare + RCA cu Turcia adăugat manual → Turcia nu mai cere RCA", async () => {
+    const h = h0();
+    h.store.updateVehicle("v1", { plate: "CJ-99-XYZ", make: "Skoda", model: "Octavia" });
+    h.store.addDocument({ kind: "rca", validUntil: "2027-11-16", coversTurkey: true });
+
+    const t1 = await h.say("Până când am RCA?");
+    expect(t1.reply).toContain("RCA-ul pentru CJ-99-XYZ e valabil până pe 16.11.2027");
+
+    await h.say("Plec în Turcia săptămâna viitoare.");
+    const t2 = await h.say("Da.");
+    expect(t2.reply).not.toContain("RCA");
+    expect(t2.reply).toContain("vinieta pentru Bulgaria");
+  });
+});
+
 describe("conversație", () => {
   it.each([
     ["Bună!", "Bună! Pot să plătesc facturi"],

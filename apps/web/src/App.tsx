@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatLei, type Bill, type PendingPaymentForClient } from "@pago/shared";
 import { Bills } from "./Bills.tsx";
+import { Car, type CarData } from "./Car.tsx";
 import { BrowserSpeechToText, BrowserTextToSpeech } from "./speech.ts";
 import "./app.css";
 
-type Msg = { from: "user" | "bot"; text: string };
+/** `shown` = câte caractere se văd (textul apare treptat cât timp asistentul vorbește). */
+type Msg = { id: number; from: "user" | "bot"; text: string; shown?: number };
 type VoiceState = "idle" | "listening" | "thinking" | "speaking";
 
 // O sesiune nouă la fiecare încărcare a paginii.
 const sessionId = crypto.randomUUID();
+let nextId = 1;
 
 const SPOKEN_CATEGORY: Record<Bill["category"], string> = {
   electricity: "curent", gas: "gaz", water: "apă", internet: "internet", phone: "telefon",
@@ -25,28 +28,35 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return data as T;
 }
 
+const WELCOME = "Bună! Cu ce te pot ajuta? Scrie sau apasă pe microfon și vorbește. De exemplu: „Plătește factura la curent” sau „Plec în Turcia”.";
+
 export function App() {
-  const [messages, setMessages] = useState<Msg[]>([
-    { from: "bot", text: "Bună! Cu ce te pot ajuta? Scrie sau apasă pe microfon și vorbește. De exemplu: „Plătește factura la curent” sau „Cât am de plată?”" },
-  ]);
+  const [messages, setMessages] = useState<Msg[]>([{ id: nextId++, from: "bot", text: WELCOME }]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<PendingPaymentForClient | null>(null);
   const [bills, setBills] = useState<Bill[]>([]);
+  const [car, setCar] = useState<CarData | null>(null);
   const [mode, setMode] = useState("…");
-  const [voiceOn, setVoiceOn] = useState(false); // citește răspunsurile cu voce
+  const [voiceOn, setVoiceOn] = useState(false); // vocea asistentului (citește răspunsurile)
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"bills" | "car">("bills");
   const endRef = useRef<HTMLDivElement>(null);
+  const voiceOnRef = useRef(voiceOn);
+  voiceOnRef.current = voiceOn;
 
   const stt = useMemo(() => new BrowserSpeechToText(), []);
   const tts = useMemo(() => new BrowserTextToSpeech(), []);
 
-  const loadBills = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      setBills(await fetch("/api/bills").then((r) => r.json()));
+      const [b, c] = await Promise.all([fetch("/api/bills").then((r) => r.json()), fetch("/api/car").then((r) => r.json())]);
+      setBills(b);
+      setCar(c);
     } catch {
-      /* serverul nu răspunde; lista rămâne cum era */
+      /* serverul nu răspunde; datele rămân cum erau */
     }
   }, []);
 
@@ -54,7 +64,7 @@ export function App() {
   const loadProactive = useCallback(async () => {
     try {
       const r = await fetch(`/api/proactive?sessionId=${sessionId}`).then((x) => x.json());
-      if (r.message) setMessages([{ from: "bot", text: r.message }]);
+      if (r.message) setMessages([{ id: nextId++, from: "bot", text: r.message }]);
     } catch {
       /* fără mesaj proactiv */
     }
@@ -62,43 +72,62 @@ export function App() {
 
   useEffect(() => {
     fetch("/api/health").then((r) => r.json()).then((h) => setMode(h.llmMode)).catch(() => setMode("offline"));
-    loadBills();
+    loadData();
     loadProactive();
-  }, [loadBills, loadProactive]);
+  }, [loadData, loadProactive]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, pending, busy]);
 
-  const add = (m: Msg) => setMessages((prev) => [...prev, m]);
+  const setShown = (id: number, shown: number | undefined) =>
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, shown } : m)));
 
-  async function sayAloud(text: string, force = false) {
-    if (!(voiceOn || force) || !tts.supported) return;
+  /** Citește un mesaj cu voce; textul lui apare pe măsură ce e rostit. */
+  async function speakMessage(id: number, text: string) {
+    if (!tts.supported) return;
+    setSpeakingId(id);
     setVoiceState("speaking");
-    await tts.speak(text);
+    setShown(id, 0);
+    await tts.speak(text, (chars) => setShown(id, chars));
+    setShown(id, undefined);
+    setSpeakingId((cur) => (cur === id ? null : cur));
     setVoiceState("idle");
+  }
+
+  /** Adaugă un răspuns al asistentului; cu vocea pornită îl și citește. */
+  async function botSays(text: string, forceVoice = false) {
+    const id = nextId++;
+    const speak = (voiceOnRef.current || forceVoice) && tts.supported;
+    setMessages((prev) => [...prev, { id, from: "bot", text, shown: speak ? 0 : undefined }]);
+    if (speak) await speakMessage(id, text);
+  }
+
+  function stopSpeaking() {
+    tts.stop();
+    setSpeakingId(null);
+    setMessages((prev) => prev.map((m) => (m.shown !== undefined ? { ...m, shown: undefined } : m)));
   }
 
   async function send(text: string, viaVoice = false) {
     const t = text.trim();
     if (!t || busy) return;
-    tts.stop();
-    add({ from: "user", text: t });
+    stopSpeaking();
+    setMessages((prev) => [...prev, { id: nextId++, from: "user", text: t }]);
     setInput("");
     setBusy(true);
     setVoiceState("thinking");
     try {
       const r = await post<{ reply: string; pending: PendingPaymentForClient | null }>("/api/chat", { sessionId, message: t });
-      add({ from: "bot", text: r.reply });
       setPending(r.pending);
       setBusy(false);
-      loadBills();
-      await sayAloud(r.reply, viaVoice);
-    } catch {
-      add({ from: "bot", text: "Nu pot ajunge la server acum. Mai încearcă puțin mai târziu." });
-      setBusy(false);
-    } finally {
       setVoiceState("idle");
+      loadData();
+      await botSays(r.reply, viaVoice);
+    } catch {
+      setBusy(false);
+      setVoiceState("idle");
+      await botSays("Nu pot ajunge la server acum. Mai încearcă puțin mai târziu.");
     }
   }
 
@@ -108,7 +137,7 @@ export function App() {
       stt.stop();
       return;
     }
-    tts.stop();
+    stopSpeaking();
     setVoiceOn(true); // dacă vorbești, îți și răspundem cu voce
     setVoiceState("listening");
     try {
@@ -122,38 +151,46 @@ export function App() {
     }
   }
 
+  function toggleVoice() {
+    if (voiceOn) {
+      stopSpeaking();
+      setVoiceOn(false);
+    } else {
+      setVoiceOn(true);
+      voiceOnRef.current = true;
+      botSays("Vocea asistentului e pornită. Îți citesc răspunsurile cu voce tare.", true);
+    }
+  }
+
   async function confirm() {
     if (!pending || busy) return;
     setBusy(true);
+    let text: string;
     try {
       const r = await post<{ payment: { total: number } }>("/api/payments/confirm", { sessionId, token: pending.token });
-      const text = `Gata, am plătit ${formatLei(r.payment.total)}.`;
-      add({ from: "bot", text });
-      sayAloud(text);
+      text = `Gata, am plătit ${formatLei(r.payment.total)}.`;
     } catch (e) {
-      add({ from: "bot", text: (e as Error).message });
-    } finally {
-      setPending(null);
-      setBusy(false);
-      loadBills();
+      text = (e as Error).message;
     }
+    setPending(null);
+    setBusy(false);
+    loadData();
+    await botSays(text);
   }
 
   async function cancel() {
     if (!pending || busy) return;
     await post("/api/payments/cancel", { sessionId, token: pending.token }).catch(() => {});
     setPending(null);
-    const text = "Bine, nu am plătit nimic.";
-    add({ from: "bot", text });
-    sayAloud(text);
+    await botSays("Bine, nu am plătit nimic.");
   }
 
   async function reset() {
-    tts.stop();
+    stopSpeaking();
     await post("/api/dev/reset", { variant: "demo" }).catch(() => {});
     setPending(null);
-    setMessages([{ from: "bot", text: "Am pornit povestea de la început. Cu ce te pot ajuta?" }]);
-    loadBills();
+    setMessages([{ id: nextId++, from: "bot", text: "Am pornit povestea de la început. Cu ce te pot ajuta?" }]);
+    loadData();
     loadProactive();
   }
 
@@ -168,30 +205,59 @@ export function App() {
       <header className="top">
         <span className="brand">pago</span>
         <span className="sub">Asistent · model: {mode}</span>
-        <button
-          className="icon-btn"
-          onClick={() => { if (voiceOn) tts.stop(); setVoiceOn(!voiceOn); }}
-          aria-pressed={voiceOn}
-          aria-label={voiceOn ? "Oprește citirea cu voce" : "Pornește citirea cu voce"}
-          title={voiceOn ? "Răspunsurile sunt citite cu voce" : "Răspunsurile nu sunt citite"}
-        >
-          {voiceOn ? "🔊" : "🔇"}
-        </button>
         <button className="icon-btn" onClick={reset} aria-label="Repornește demo-ul" title="Repornește demo-ul">↺</button>
       </header>
 
       <div className="layout">
-        <Bills
-          bills={bills}
-          onChanged={loadBills}
-          onPayWithAssistant={(b) => send(`Plătește factura la ${SPOKEN_CATEGORY[b.category]}.`)}
-        />
+        <div className="side">
+          <div className="tabs" role="tablist" aria-label="Datele mele">
+            <button role="tab" aria-selected={tab === "bills"} className={tab === "bills" ? "on" : ""} onClick={() => setTab("bills")}>Facturi</button>
+            <button role="tab" aria-selected={tab === "car"} className={tab === "car" ? "on" : ""} onClick={() => setTab("car")}>Mașina mea</button>
+          </div>
+          {tab === "bills" ? (
+            <Bills
+              bills={bills}
+              onChanged={loadData}
+              onPayWithAssistant={(b) => send(`Plătește factura la ${SPOKEN_CATEGORY[b.category]}.`)}
+            />
+          ) : (
+            <Car data={car} onChanged={loadData} />
+          )}
+        </div>
 
         <section className="assistant" aria-label="Asistent">
+          <div className="voice-bar">
+            <button
+              className={`voice-toggle ${voiceOn ? "on" : ""}`}
+              onClick={toggleVoice}
+              aria-pressed={voiceOn}
+              disabled={!tts.supported}
+            >
+              <span aria-hidden="true">{voiceOn ? "🔊" : "🔇"}</span>
+              {tts.supported ? (voiceOn ? "Vocea asistentului: pornită" : "Pornește vocea asistentului") : "Vocea nu e disponibilă"}
+            </button>
+            {speakingId !== null && (
+              <button className="small-btn" onClick={stopSpeaking}>Oprește</button>
+            )}
+          </div>
+
           <div className="chat" aria-live="polite">
-            {messages.map((m, i) => (
-              <div key={i} className={`bubble ${m.from}`}>{m.text}</div>
-            ))}
+            {messages.map((m) => {
+              const partial = m.shown !== undefined && m.shown < m.text.length;
+              return (
+                <div key={m.id} className={`bubble ${m.from} ${m.id === speakingId ? "speaking" : ""}`}>
+                  {/* Cititoarele de ecran primesc textul complet; vizual apare treptat. */}
+                  <span aria-hidden={partial ? "true" : undefined}>
+                    {partial ? m.text.slice(0, m.shown) : m.text}
+                    {partial && <span className="caret" />}
+                  </span>
+                  {partial && <span className="sr-only">{m.text}</span>}
+                  {m.from === "bot" && tts.supported && m.id !== speakingId && (
+                    <button className="replay" onClick={() => speakMessage(m.id, m.text)} aria-label="Ascultă mesajul" title="Ascultă mesajul">🔊</button>
+                  )}
+                </div>
+              );
+            })}
             {busy && <div className="bubble bot thinking">Se gândește…</div>}
 
             {pending && (
@@ -230,7 +296,7 @@ export function App() {
               </svg>
             </button>
             <span className="mic-label">
-              {stt.supported ? micLabel : "Vocea nu e disponibilă în acest browser — scrie mesajul."}
+              {stt.supported ? micLabel : "Microfonul nu e disponibil în acest browser — scrie mesajul."}
             </span>
           </div>
           {voiceError && <p className="error center">{voiceError}</p>}
