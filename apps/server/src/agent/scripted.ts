@@ -105,6 +105,10 @@ interface Turn {
   lastAssistantNorm: string;
   /** Ultima verificare de călătorie din conversație (ca să știm la ce țară ne referim mai târziu). */
   tripInput: Record<string, unknown> | null;
+  /** Mesajul anterior al utilizatorului (normalizat), pentru cereri în mai mulți pași. */
+  prevUserNorm: string;
+  /** Ultimele mesaje ale utilizatorului dinaintea celui curent (cel mai vechi primul). */
+  recentUserNorms: string[];
 }
 
 type TripItem = {
@@ -136,7 +140,7 @@ function readTurn(messages: Anthropic.Beta.BetaMessageParam[]): Turn {
     const m = messages[i];
     if (m.role === "user" && blocks(m).some((b) => b.type === "text")) { start = i; break; }
   }
-  const turn: Turn = { userText: "", norm: "", words: [], event: null, results: [], lastAssistantText: "", lastAssistantNorm: "", tripInput: null };
+  const turn: Turn = { userText: "", norm: "", words: [], event: null, results: [], lastAssistantText: "", lastAssistantNorm: "", tripInput: null, prevUserNorm: "", recentUserNorms: [] };
   for (const m of messages) {
     for (const b of blocks(m)) if (b.type === "tool_use" && b.name === "run_trip_checklist") turn.tripInput = b.input ?? null;
   }
@@ -173,6 +177,16 @@ function readTurn(messages: Anthropic.Beta.BetaMessageParam[]): Turn {
     }
   }
   turn.lastAssistantNorm = normalize(turn.lastAssistantText);
+
+  for (let i = start - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== "user") continue;
+    const text = blocks(m).filter((b) => b.type === "text" && !(b.text ?? "").startsWith(`<${EVENT_TAG}>`)).map((b) => b.text ?? "").join(" ");
+    if (!text.trim()) continue;
+    if (!turn.prevUserNorm) turn.prevUserNorm = normalize(text);
+    turn.recentUserNorms.unshift(normalize(text));
+    if (turn.recentUserNorms.length >= 3) break;
+  }
   return turn;
 }
 
@@ -198,6 +212,25 @@ function decide(t: Turn): Action {
   }
   if (/\b(ce (poti|stii) (face|sa faci)|ajutor|ajuta ma|cum functionezi)\b/.test(t.norm)) {
     return { text: "Pot să-ți plătesc facturile, să-ți spun ce ai de plată și când e scadența, să verific RCA-ul și rovinieta și să-ți arăt oferte de RCA, viniete sau roaming. Plățile le fac doar după ce îmi spui „da”." };
+  }
+
+  // ---------- Adăugare / ștergere de facturi prin voce ----------
+  const wantsAdd = w.some((x) => ADD_WORDS.has(x)) && (has("factura", "facturi") || categories.length > 0);
+  const wantsRemove = w.some((x) => REMOVE_WORDS.has(x)) && (has("factura", "facturi") || categories.length > 0);
+  if (wantsAdd) {
+    return addBill(t, categories[0], parseAmount(t.norm), parseDue(t.norm), providerIn(t));
+  }
+  if (wantsRemove) return removeBill(t, categories[0], parseAmount(t.norm));
+  // Răspuns la „La ce e factura…?” (adăugare în mai mulți pași)
+  if (/\bla ce e factura\b/.test(asked) && categories.length) {
+    return addBill(t, categories[0], amountLoose(t.norm) ?? parseAmount(t.prevUserNorm), dueFromRecent(t), providerIn(t));
+  }
+  // Răspuns la „Ce sumă are factura la X?”
+  const amountQ = asked.match(/\bce suma are factura la ([a-z]+)/);
+  if (amountQ) {
+    const amount = amountLoose(t.norm);
+    const cat = findCategories([amountQ[1]])[0];
+    if (cat && amount !== null) return addBill(t, cat, amount, dueFromRecent(t), null);
   }
 
   // ---------- Călătorii (D3): regulile decid, eu doar povestesc ----------
@@ -227,7 +260,8 @@ function decide(t: Turn): Action {
   if (shortYes && /\bvrei s(a)? ?(o|le) platesc\b/.test(asked)) {
     if (/\bintarziat/.test(asked)) return payBills(t, { overdue: true });
     const cats = findCategories(asked.split(" "));
-    if (cats.length) return payBills(t, { categories: cats });
+    // „Am adăugat factura la telefon de 42 de lei…” → plătim exact factura cu suma asta, nu alta de același tip.
+    if (cats.length) return payBills(t, { categories: cats, preferAmount: parseAmount(asked) });
   }
   if (w.length <= 3 && (w[0] === "nu" || w[0] === "lasa") && !categories.length && !productType) {
     return { text: "Bine. Spune-mi dacă mai ai nevoie de ceva." };
@@ -331,7 +365,7 @@ function billInfo(t: Turn, categories: BillCategory[]): Action {
 
 function payBills(
   t: Turn,
-  sel: { all?: boolean; overdue?: boolean; categories?: BillCategory[]; index?: number; spokenAmount?: number | null },
+  sel: { all?: boolean; overdue?: boolean; categories?: BillCategory[]; index?: number; spokenAmount?: number | null; preferAmount?: number | null },
 ): Action {
   const bills = result<BillView[]>(t, "list_bills");
   if (!bills) return call("list_bills", {});
@@ -345,7 +379,9 @@ function payBills(
   else if (sel.index !== undefined) chosen = due[sel.index === -1 ? due.length - 1 : sel.index] ? [due[sel.index === -1 ? due.length - 1 : sel.index]] : [];
   else {
     for (const c of sel.categories ?? []) {
-      const b = due.find((x) => x.category === c);
+      const pref = sel.preferAmount;
+      const b = (pref != null ? due.find((x) => x.category === c && Math.abs(x.amount - pref) < 0.01) : undefined)
+        ?? due.find((x) => x.category === c);
       if (b) chosen.push(b);
       else if (bills.some((x) => x.category === c)) alreadyPaid.push(CAT_RO[c]);
       else missing.push(CAT_RO[c]);
@@ -383,6 +419,83 @@ function payBills(
   const total = round2(chosen.reduce((s, b) => s + b.amount, 0));
   const intro = sel.all ? `Toate cele ${COUNT_WORDS[chosen.length] ?? chosen.length} facturi` : capitalize(joinRo(chosen.map((b) => ARTICULATED[b.category])));
   return { text: `${intro}: ${listBillsSpoken(chosen)}, în total ${spokenLei(total)}.${note} Le plătesc acum?` };
+}
+
+// ---------- adăugare / ștergere facturi ----------
+
+const ADD_WORDS = new Set(["adauga", "adaug", "adaugam", "adaugi", "introdu", "introduc", "inregistreaza", "noteaza", "trece"]);
+const REMOVE_WORDS = new Set(["sterge", "sterg", "stergi", "elimina", "elimin", "scoate", "scot"]);
+
+const MONTHS: Record<string, number> = {
+  ianuarie: 1, februarie: 2, martie: 3, aprilie: 4, mai: 5, iunie: 6, iulie: 7,
+  august: 8, septembrie: 9, octombrie: 10, noiembrie: 11, decembrie: 12,
+};
+
+type DueInput = { dueDate?: string; dueInDays?: number };
+
+/** „pe 25 noiembrie” → 25.11; „pe 25.11” → 25.11; „mâine” → 1 zi; „peste 10 zile” → 10. */
+function parseDue(norm: string): DueInput {
+  const named = norm.match(/\b(?:pe|la|scadenta|scadent[a-z]*|pana pe|pana la)\s+(\d{1,2})\s+([a-z]+)/);
+  if (named && MONTHS[named[2]]) return { dueDate: `${Number(named[1])}.${MONTHS[named[2]]}` };
+  const numeric = norm.match(/\b(?:pe|scadenta|scadent[a-z]*|pana pe)\s+(\d{1,2})\s(\d{1,2})\b(?!\s*(?:de\s)?lei)/);
+  if (numeric) return { dueDate: `${Number(numeric[1])}.${Number(numeric[2])}` };
+  if (/\bpoimaine\b/.test(norm)) return { dueInDays: 2 };
+  if (/\bmaine\b/.test(norm)) return { dueInDays: 1 };
+  if (/\bazi\b/.test(norm)) return { dueInDays: 0 };
+  const peste = norm.match(/\bpeste (\d+) (zile|saptamani)\b/);
+  if (peste) return { dueInDays: Number(peste[1]) * (peste[2] === "saptamani" ? 7 : 1) };
+  if (/\bsaptamana viitoare\b/.test(norm)) return { dueInDays: 7 };
+  if (/\bluna viitoare\b/.test(norm)) return { dueInDays: 30 };
+  return {};
+}
+
+/** Scadența spusă oriunde în ultimele mesaje ale cererii (cea mai recentă câștigă). */
+function dueFromRecent(t: Turn): DueInput {
+  return [...t.recentUserNorms, t.norm].reduce<DueInput>((acc, n) => {
+    const d = parseDue(n);
+    return d.dueDate || d.dueInDays !== undefined ? d : acc;
+  }, {});
+}
+
+/** O sumă spusă și fără „lei” (ca răspuns la „Ce sumă are factura?”): „42”, „42 50”, „patruzeci și doi”. */
+function amountLoose(norm: string): number | null {
+  return parseAmount(norm) ?? parseAmount(`${norm} lei`);
+}
+
+/** „…de la Orange…” → „Orange” (furnizorul, dacă e spus). */
+function providerIn(t: Turn): string | null {
+  const m = t.norm.match(/\bde la ([a-z]+)/);
+  if (!m || CATEGORY_WORDS[m[1]] || /^\d/.test(m[1]) || UNITS[m[1]] || TENS[m[1]]) return null;
+  return originalWord(t.userText, m[1]);
+}
+
+function addBill(t: Turn, category: BillCategory | undefined, amount: number | null, due: DueInput, provider: string | null): Action {
+  const added = t.results.find((r) => r.name === "add_bill");
+  if (added) {
+    if (!added.ok) return { text: `Nu am putut adăuga factura: ${String((added.data as { message?: string }).message ?? "date greșite")}` };
+    const b = added.data as BillView;
+    const when = b.daysUntilDue < 0 ? `cu scadența pe ${dateSpoken(b.dueDate)}, deci deja întârziată` : `scadentă pe ${dateSpoken(b.dueDate)}`;
+    return { text: `Am adăugat factura la ${b.categoryRo} de ${spokenLei(b.amount)}, ${when}. Vrei s-o plătesc?` };
+  }
+  if (!category) return { text: "La ce e factura: curent, gaz, apă, internet sau telefon?" };
+  if (amount === null) return { text: `Ce sumă are factura la ${CAT_RO[category]}?` };
+  return call("add_bill", { category, amount, ...(provider ? { provider } : {}), ...due });
+}
+
+function removeBill(t: Turn, category: BillCategory | undefined, amount: number | null): Action {
+  const removed = t.results.find((r) => r.name === "remove_bill");
+  if (removed) {
+    const b = (removed.data as { removed: BillView | null }).removed;
+    return { text: b ? `Am șters factura la ${b.categoryRo} de ${spokenLei(b.amount)}.` : "Am șters factura." };
+  }
+  if (!category) return { text: "Ce factură vrei să șterg? Spune-mi tipul, de exemplu „factura la telefon”." };
+  const bills = result<BillView[]>(t, "list_bills");
+  if (!bills) return call("list_bills", {});
+  const matching = bills.filter((b) => b.category === category);
+  if (!matching.length) return { text: `Nu am găsit nicio factură la ${CAT_RO[category]}.` };
+  // Dacă a spus suma, o alegem pe aceea; altfel pe cea mai nouă (ultima adăugată).
+  const pick = (amount !== null ? matching.find((b) => Math.abs(b.amount - amount) < 0.01) : undefined) ?? matching[matching.length - 1];
+  return call("remove_bill", { billId: pick.id });
 }
 
 // ---------- mașina și produse ----------

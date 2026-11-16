@@ -161,6 +161,59 @@ describe("datele editate în „Mașina mea” sunt folosite de asistent", () =>
   });
 });
 
+describe("facturi adăugate și șterse prin voce", () => {
+  it("totul într-o frază → adaugă (fără plată), citește înapoi, „da” plătește exact factura nouă", async () => {
+    const h = h0();
+    const t1 = await h.say("Adaugă o factură la curent de la Enel de 120 de lei, scadentă pe 25 noiembrie.");
+    expect(names(t1)).toEqual(["add_bill"]);
+    expect(t1.reply).toBe("Am adăugat factura la curent de 120 de lei, scadentă pe 25.11.2026. Vrei s-o plătesc?");
+    expect(t1.pending).toBeNull(); // adăugarea nu plătește nimic
+    const added = h.store.listBills().at(-1)!;
+    expect(added).toMatchObject({ category: "electricity", provider: "Enel", amount: 120, dueDate: "2026-11-25", status: "unpaid" });
+
+    const t2 = await h.say("Da.");
+    // Există și factura veche la curent (187,40) — se pregătește exact cea nouă, de 120.
+    expect(t2.pending?.lines.map((l) => l.refId)).toEqual([added.id]);
+    expect(h.store.listPayments()).toHaveLength(0);
+    await h.say("Da.");
+    expect(h.bill(added.id).status).toBe("paid");
+    expect(h.bill("b-curent").status).toBe("unpaid");
+  });
+
+  it("în mai mulți pași: tipul, apoi suma (și scadența din prima frază)", async () => {
+    const h = h0();
+    const t1 = await h.say("Adaugă o factură nouă cu scadența peste 10 zile.");
+    expect(t1.reply).toBe("La ce e factura: curent, gaz, apă, internet sau telefon?");
+    const t2 = await h.say("Telefon.");
+    expect(t2.reply).toBe("Ce sumă are factura la telefon?");
+    const t3 = await h.say("42 50");
+    expect(t3.reply).toBe("Am adăugat factura la telefon de 42,50 lei, scadentă pe 26.11.2026. Vrei s-o plătesc?");
+    expect(h.store.listBills().at(-1)).toMatchObject({ category: "phone", amount: 42.5, provider: "Adăugată prin voce" });
+  });
+
+  it("suma spusă în cuvinte", async () => {
+    const h = h0();
+    await h.say("Adaugă factura la apă.");
+    const t = await h.say("Patruzeci și cinci de lei.");
+    expect(h.store.listBills().at(-1)).toMatchObject({ category: "water", amount: 45 });
+    expect(t.reply).toContain("de 45 de lei");
+  });
+
+  it("scadență implicită: peste 14 zile", async () => {
+    const h = h0();
+    await h.say("Adaugă o factură la internet de 60 de lei.");
+    expect(h.store.listBills().at(-1)?.dueDate).toBe("2026-11-30");
+  });
+
+  it("șterge prin voce: o alege pe cea cu suma spusă", async () => {
+    const h = h0();
+    const t = await h.say("Șterge factura la apă.");
+    expect(names(t)).toEqual(["list_bills", "remove_bill"]);
+    expect(t.reply).toBe("Am șters factura la apă de 56 de lei.");
+    expect(h.store.listBills().map((b) => b.id)).not.toContain("b-apa");
+  });
+});
+
 describe("conversație", () => {
   it.each([
     ["Bună!", "Bună! Pot să plătesc facturi"],

@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { daysBetween, type Bill, type PaymentRequestItem, type ProductType } from "@pago/shared";
+import { addDays, daysBetween, type Bill, type IsoDate, type PaymentRequestItem, type ProductType } from "@pago/shared";
 import { PagoError, type PagoStore } from "../mock/store.ts";
 import type { PaymentConfirmation } from "../payments/confirmation.ts";
 import { getExpiringItems, runTripChecklist } from "../scenarios/trips.ts";
@@ -84,6 +84,31 @@ export const TOOL_DEFINITIONS: Anthropic.Beta.BetaTool[] = [
     },
   },
   {
+    name: "add_bill",
+    description:
+      "Adaugă o factură nouă în lista utilizatorului (NU plătește nimic). Ai nevoie de tip și sumă; dacă lipsesc, întreabă-l întâi. Scadența: dueDate „YYYY-MM-DD” sau „DD.MM”, ori dueInDays; dacă nu o spune, implicit peste 14 zile. După adăugare, spune-i înapoi tipul, suma și scadența.",
+    input_schema: {
+      type: "object",
+      properties: {
+        category: { type: "string", enum: ["electricity", "gas", "water", "internet", "phone"] },
+        amount: { type: "number", description: "Suma în lei" },
+        provider: { type: "string", description: "Furnizorul, dacă îl spune" },
+        dueDate: { type: "string", description: "„YYYY-MM-DD” sau „DD.MM”" },
+        dueInDays: { type: "number" },
+      },
+      required: ["category", "amount"],
+    },
+  },
+  {
+    name: "remove_bill",
+    description: "Șterge o factură din listă (după id, din list_bills). Spune-i utilizatorului ce ai șters.",
+    input_schema: {
+      type: "object",
+      properties: { billId: { type: "string" } },
+      required: ["billId"],
+    },
+  },
+  {
     name: "prepare_payment",
     description:
       "Pregătește o plată (NU plătește). Sumele se iau din date, nu din ce spune utilizatorul. După acest apel, spune-i utilizatorului ce se plătește și cât, și întreabă-l dacă confirmă. Confirmarea o face utilizatorul (prin „da” sau butonul de pe ecran), nu tu.",
@@ -162,6 +187,23 @@ export function executeTool(ctx: ToolContext, name: string, input: unknown): Too
         };
       case "get_expiring_items":
         return { ok: true, data: getExpiringItems(ctx.store, typeof args.days === "number" ? args.days : 30) };
+      case "add_bill": {
+        const today = ctx.store.today();
+        const dueDate = resolveDueDate(today, args.dueDate, args.dueInDays);
+        const provider = typeof args.provider === "string" && args.provider.trim() ? args.provider : "Adăugată prin voce";
+        const bill = ctx.store.addBill({
+          category: args.category as Bill["category"],
+          provider,
+          amount: Number(args.amount),
+          dueDate,
+        });
+        return { ok: true, data: { ...bill, categoryRo: CATEGORY_RO[bill.category], daysUntilDue: daysBetween(today, bill.dueDate) } };
+      }
+      case "remove_bill": {
+        const bill = ctx.store.listBills().find((b) => b.id === args.billId);
+        ctx.store.removeBill(String(args.billId ?? ""));
+        return { ok: true, data: { removed: bill ? { ...bill, categoryRo: CATEGORY_RO[bill.category] } : null } };
+      }
       case "prepare_payment": {
         const items = parseItems(args.items);
         const { token: _secret, ...summary } = ctx.confirmation.prepare(ctx.sessionId, items); // token-ul NU ajunge la LLM
@@ -205,6 +247,30 @@ function listBills(ctx: ToolContext, status: unknown) {
     daysUntilDue: daysBetween(today, b.dueDate),
     status: b.status,
   }));
+}
+
+/**
+ * Scadența spusă de utilizator → „YYYY-MM-DD”.
+ * Acceptă „2026-11-25”, „25.11” (următoarea apariție a datei), sau un număr de zile. Implicit: peste 14 zile.
+ */
+export function resolveDueDate(today: IsoDate, dueDate: unknown, dueInDays: unknown): IsoDate {
+  if (typeof dueDate === "string") {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return dueDate;
+    const m = dueDate.match(/^(\d{1,2})\.(\d{1,2})$/);
+    if (m) {
+      const [y] = today.split("-").map(Number);
+      const day = Number(m[1]), month = Number(m[2]);
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+        const pad = (n: number) => String(n).padStart(2, "0");
+        let candidate = `${y}-${pad(month)}-${pad(day)}`;
+        // Dacă data a trecut de mult anul ăsta (peste o lună), e probabil anul viitor.
+        if (daysBetween(today, candidate) < -31) candidate = `${y + 1}-${pad(month)}-${pad(day)}`;
+        return candidate;
+      }
+    }
+  }
+  if (typeof dueInDays === "number" && Number.isFinite(dueInDays)) return addDays(today, Math.round(dueInDays));
+  return addDays(today, 14);
 }
 
 function parseItems(raw: unknown): PaymentRequestItem[] {
