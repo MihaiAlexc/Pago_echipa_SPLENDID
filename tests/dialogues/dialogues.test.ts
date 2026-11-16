@@ -107,6 +107,27 @@ describe("siguranță: nicio plată fără „da”", () => {
   });
 });
 
+describe("facturi adăugate de utilizator din pagină", () => {
+  it("asistentul o vede și o plătește", async () => {
+    const h = createHarness(new ScriptedLlm());
+    const bill = h.store.addBill({ category: "phone", provider: "Telefonia Demo", amount: 42.5, dueDate: "2026-11-21" });
+
+    const t1 = await h.say("Plătește factura la telefon.");
+    expect(t1.reply).toBe("Factura la telefon este de 42,50 lei, scadentă în 5 zile. O plătesc acum?");
+    await h.say("Da.");
+    expect(h.bill(bill.id).status).toBe("paid");
+  });
+
+  it("factură ștearsă între pregătire și „da” → nu se plătește nimic", async () => {
+    const h = createHarness(new ScriptedLlm());
+    await h.say("Plătește factura la apă.");
+    h.store.removeBill("b-apa");
+    const t = await h.say("Da.");
+    expect(t.outcome).toBe("failed");
+    expect(h.store.listPayments()).toHaveLength(0);
+  });
+});
+
 describe("„Cât am de plată?”", () => {
   it("adună facturile de plată", async () => {
     const h = createHarness(new ScriptedLlm());

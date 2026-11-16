@@ -142,6 +142,34 @@ describe("plăți", () => {
     expect(store.getServices()).toMatchObject([{ type: "roaming", country: "TR", validUntil: "2026-11-23" }]);
   });
 
+  it("adaugă o factură: neplătită dacă scadența e în viitor, întârziată dacă a trecut", () => {
+    const store = newStore();
+    const future = store.addBill({ category: "phone", provider: "Telefonia Demo", amount: 42.5, dueDate: "2026-11-20" });
+    const past = store.addBill({ category: "gas", provider: "Alt Gaz", amount: 10, dueDate: "2026-11-01" });
+    expect(future).toMatchObject({ status: "unpaid", amount: 42.5 });
+    expect(past.status).toBe("overdue");
+    expect(store.listBills()).toHaveLength(6);
+
+    // și se poate plăti ca oricare alta
+    expect(store.executePayment([{ kind: "bill", billId: future.id }]).total).toBe(42.5);
+  });
+
+  it("adăugare invalidă → INVALID_BILL", () => {
+    const store = newStore();
+    const ok = { category: "phone" as const, provider: "X", amount: 10, dueDate: "2026-11-20" };
+    expectPagoError(() => store.addBill({ ...ok, amount: 0 }), "INVALID_BILL");
+    expectPagoError(() => store.addBill({ ...ok, provider: "  " }), "INVALID_BILL");
+    expectPagoError(() => store.addBill({ ...ok, dueDate: "mâine" }), "INVALID_BILL");
+    expectPagoError(() => store.addBill({ ...ok, category: "bla" as never }), "INVALID_BILL");
+  });
+
+  it("șterge o factură", () => {
+    const store = newStore();
+    store.removeBill("b-apa");
+    expect(store.listBills().map((b) => b.id)).not.toContain("b-apa");
+    expectPagoError(() => store.removeBill("b-apa"), "BILL_NOT_FOUND");
+  });
+
   it("reset readuce povestea la început", () => {
     const store = newStore();
     store.executePayment([{ kind: "bill", billId: "b-curent" }]);

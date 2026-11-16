@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import type { BillStatus, PaymentRequestItem, ProductType, SeedVariant } from "@pago/shared";
-import { PagoError, PagoStore } from "./mock/store.ts";
+import { PagoError, PagoStore, type NewBillInput } from "./mock/store.ts";
 import { ConfirmError, PaymentConfirmation } from "./payments/confirmation.ts";
 import { Agent } from "./agent/agent.ts";
 import { ClaudeClient } from "./agent/claude.ts";
@@ -51,7 +51,7 @@ export function buildApp(options: AppOptions = {}) {
     if (err instanceof PagoError) {
       const status = err.code.endsWith("NOT_FOUND")
         ? 404 // nu există
-        : err.code === "EMPTY_PAYMENT" || err.code === "DUPLICATE_ITEM"
+        : err.code === "EMPTY_PAYMENT" || err.code === "DUPLICATE_ITEM" || err.code === "INVALID_BILL"
           ? 400 // cerere greșită
           : 409; // conflict cu starea datelor (ex. factură deja plătită)
       return reply.status(status).send({ error: err.code, message: err.message });
@@ -93,6 +93,17 @@ export function buildApp(options: AppOptions = {}) {
       return reply.status(400).send({ error: "BAD_STATUS", message: `status trebuie să fie: ${BILL_STATUSES.join(", ")}` });
     }
     return store.listBills(status as BillStatus | undefined);
+  });
+
+  // Utilizatorul își poate edita lista de facturi din pagină (asistentul lucrează pe aceeași listă).
+  app.post<{ Body: NewBillInput }>("/api/bills", async (req, reply) => {
+    const bill = store.addBill(req.body ?? ({} as NewBillInput));
+    return reply.status(201).send(bill);
+  });
+
+  app.delete<{ Params: { id: string } }>("/api/bills/:id", async (req) => {
+    store.removeBill(req.params.id);
+    return { ok: true };
   });
 
   app.get("/api/vehicles", async () => store.getVehicles());

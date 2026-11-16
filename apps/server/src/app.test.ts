@@ -121,6 +121,24 @@ describe("API Pago simulat", () => {
     expect(empty.json().error).toBe("EMPTY_PAYMENT");
   });
 
+  it("POST /api/bills adaugă, DELETE /api/bills/:id șterge", async () => {
+    const { app, get } = setup();
+    const add = await app.inject({
+      method: "POST", url: "/api/bills",
+      payload: { category: "phone", provider: "Telefonia Demo", amount: 42.5, dueDate: "2026-11-20" },
+    });
+    expect(add.statusCode).toBe(201);
+    const { id } = add.json();
+    expect((await get("/api/bills")).body).toHaveLength(5);
+
+    const bad = await app.inject({ method: "POST", url: "/api/bills", payload: { category: "phone", provider: "X", amount: -1, dueDate: "2026-11-20" } });
+    expect(bad.statusCode).toBe(400);
+
+    expect((await app.inject({ method: "DELETE", url: `/api/bills/${id}` })).statusCode).toBe(200);
+    expect((await app.inject({ method: "DELETE", url: `/api/bills/${id}` })).statusCode).toBe(404);
+    expect((await get("/api/bills")).body).toHaveLength(4);
+  });
+
   it("POST /api/dev/reset schimbă varianta", async () => {
     const { app, get } = setup();
     const res = await app.inject({ method: "POST", url: "/api/dev/reset", payload: { variant: "no-bills" } });

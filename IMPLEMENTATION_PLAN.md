@@ -447,3 +447,8 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
   - Teste: `tests/dialogues/dialogues.test.ts` (D1, D2, D5, D6 + siguranță + erori LLM, cu simularea) — trec. `npm run test:llm` (Claude real) — scris, sărit fără cheie.
   - 95 de teste trec; build OK; D1 verificat live prin `/api/chat`.
 - **Următorul pas:** Pas 4 (motorul de scenarii: Turcia, apoi termene care expiră). Încă deschis: cheia API Anthropic.
+- **2026-11-16 — Pagina web (parte din Pașii 5 și 6, la cererea echipei):**
+  - O singură pagină cu: **lista de facturi editabilă** (adaugi / ștergi; buton „Plătește” care trimite cererea asistentului), **chat scris**, **microfon** (STT `ro-RO`) și **citire cu voce** a răspunsurilor (TTS, buton 🔊/🔇), plus cardul Confirmă / Anulează.
+  - Server: `POST /api/bills` (validare: tip, furnizor, sumă 0–100.000, dată) și `DELETE /api/bills/:id`. Asistentul lucrează pe aceeași listă, deci plătește și facturile adăugate de utilizator.
+  - Web: `apps/web/src/speech.ts` (interfețele `SpeechToText` / `TextToSpeech` + implementarea din browser), `Bills.tsx`, `App.tsx`, `app.css`. Pe ecran lat: facturile lângă chat; pe telefon: una sub alta.
+  - 101 teste trec. Verificat în browser: adăugare, ștergere, „Plătește” → „da” → factura devine „Plătită”. **Neverificat încă:** microfonul și vocea pe telefon (în browserul de dezvoltare nu există microfon și nici voce română).

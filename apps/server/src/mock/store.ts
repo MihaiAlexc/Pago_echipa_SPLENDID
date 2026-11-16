@@ -20,7 +20,18 @@ export type PagoErrorCode =
   | "PRODUCT_NOT_FOUND"
   | "VEHICLE_NOT_FOUND"
   | "EMPTY_PAYMENT"
-  | "DUPLICATE_ITEM";
+  | "DUPLICATE_ITEM"
+  | "INVALID_BILL";
+
+/** Ce trimite utilizatorul când adaugă o factură. */
+export interface NewBillInput {
+  category: Bill["category"];
+  provider: string;
+  amount: number;
+  dueDate: IsoDate;
+}
+
+const BILL_CATEGORIES: Bill["category"][] = ["electricity", "gas", "water", "internet", "phone"];
 
 /** Eroare de business, cu un cod stabil (ușor de testat și de tradus în mesaj). */
 export class PagoError extends Error {
@@ -68,6 +79,36 @@ export class PagoStore {
 
   listBills(status?: BillStatus): Bill[] {
     return status ? this.data.bills.filter((b) => b.status === status) : this.data.bills;
+  }
+
+  // ---------- Facturile, editate de utilizator din pagină ----------
+
+  /** Adaugă o factură nouă (neplătită; „întârziată” dacă scadența a trecut). */
+  addBill(input: NewBillInput): Bill {
+    const provider = String(input.provider ?? "").trim().slice(0, 60);
+    const amount = Math.round(Number(input.amount) * 100) / 100;
+    if (!BILL_CATEGORIES.includes(input.category)) throw new PagoError("INVALID_BILL", "Tip de factură necunoscut.");
+    if (!provider) throw new PagoError("INVALID_BILL", "Lipsește furnizorul.");
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000) throw new PagoError("INVALID_BILL", "Suma trebuie să fie între 0 și 100.000 lei.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.dueDate))) throw new PagoError("INVALID_BILL", "Data scadenței nu e validă.");
+
+    const bill: Bill = {
+      id: `b-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      category: input.category,
+      provider,
+      amount,
+      dueDate: input.dueDate,
+      status: input.dueDate < this.today() ? "overdue" : "unpaid",
+    };
+    this.data.bills.push(bill);
+    return bill;
+  }
+
+  /** Șterge o factură. */
+  removeBill(id: string): void {
+    const i = this.data.bills.findIndex((b) => b.id === id);
+    if (i < 0) throw new PagoError("BILL_NOT_FOUND", "Nu am găsit factura.");
+    this.data.bills.splice(i, 1);
   }
 
   getVehicles() {
