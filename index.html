@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SPLENDID · Pulse</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<style>
+:root{--ground:#EFF2F7;--surface:#FFF;--surface-2:#F7F8FB;--ink:#161F28;--muted:#5A6B8F;--line:#DFE6F6;--accent:#2B59C3;--accent-soft:#E6F0FF;--shadow:0 0 1.4px rgba(24,24,27,.3),0 5.6px 11.2px rgba(24,24,27,.1)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ground:#0E131A;--surface:#171D26;--surface-2:#1D2430;--ink:#E6EAF2;--muted:#94A3BD;--line:#2A3240;--accent:#7FA2F5;--accent-soft:#1A2747;--shadow:0 4px 12px rgba(0,0,0,.35)}}
+:root[data-theme="dark"]{--ground:#0E131A;--surface:#171D26;--surface-2:#1D2430;--ink:#E6EAF2;--muted:#94A3BD;--line:#2A3240;--accent:#7FA2F5;--accent-soft:#1A2747;--shadow:0 4px 12px rgba(0,0,0,.35)}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font:400 15px/1.6 Poppins,system-ui,sans-serif;overflow-wrap:anywhere}
+.page{max-width:880px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:28px}
+svg{max-width:100%;height:auto}
+h1{font-weight:800;font-size:clamp(30px,5.2vw,46px);line-height:1.1;margin:0 0 12px;color:#FFD54A}
+h2{font-weight:700;font-size:1.35rem;margin:0 0 14px}
+h3{font-weight:600;font-size:1rem;margin:0 0 4px}
+p{margin:0}
+.mast{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mast b{font-weight:800;font-size:1.6rem;color:var(--accent);text-transform:lowercase;letter-spacing:-.02em}
+.mast i{width:1px;height:22px;background:var(--line)}
+.mast small{color:var(--muted);font-size:13px}
+.poster{background:radial-gradient(circle at 100% 100%,rgba(255,213,74,.55),transparent 45%),linear-gradient(160deg,#2A56D4,#1E43B8);color:#fff;border-radius:28px;padding:28px;display:grid;grid-template-columns:1.2fr 1fr;gap:24px;align-items:center;max-width:100%}
+.poster .sub{font-weight:700;font-size:1.05rem;color:#fff}
+.poster .an{margin-top:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.38);border-radius:16px;padding:12px 14px;font-size:14px}
+.phone{border:1.5px solid rgba(255,255,255,.38);background:rgba(255,255,255,.14);border-radius:34px;padding:14px}
+@media(max-width:640px){.poster{grid-template-columns:1fr;padding:20px}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px;max-width:100%}
+.pill{display:inline-block;border-radius:999px;padding:2px 12px;font-size:12px;font-weight:700;white-space:nowrap}
+.m1{background:var(--accent);color:#fff}
+.m2{background:#FFD54A;color:#161F28}
+.here{background:#FFD54A;color:#161F28}
+.ico{width:48px;height:48px;border-radius:14px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.ico svg{width:28px;height:28px}
+.trail{display:flex;flex-direction:column;gap:14px;position:relative}
+.stop{display:flex;gap:14px;align-items:flex-start}
+.dot{width:22px;height:22px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px;box-shadow:0 0 0 5px var(--accent-soft)}
+.stop .body{flex:1;min-width:0}
+.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.tile{display:flex;flex-direction:column;gap:10px}
+.tile .top{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.next{display:flex;gap:14px;align-items:center}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+.tx{fill:var(--ink);font:600 13px Poppins,system-ui,sans-serif}
+.st{stroke:var(--ink);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.sa{stroke:var(--accent);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="mast"><b>pago</b><i></i><small>AI Hackathon · SPLENDID</small></header>
+
+<section class="poster" aria-label="Ce construim">
+ <div>
+  <h1>Un asistent care vorbește românește</h1>
+  <p class="sub">Ascultă, înțelege, răspunde cu voce.</p>
+  <p class="an">Ca un prieten din cutie: îi vorbești, el te aude și îți răspunde. <span class="pill m1" style="background:#fff;color:#1E43B8">M1</span></p>
+ </div>
+ <div class="phone">
+  <svg viewBox="0 0 240 200" role="img" aria-label="Microfon, valuri de sunet, difuzor" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+   <rect x="22" y="20" width="26" height="46" rx="13"/><path d="M14 52a21 21 0 0 0 42 0M35 73v16M24 89h22"/>
+   <path d="M70 44q10 -10 20 0t20 0" stroke="#FFD54A"/><path d="M70 60q10 -10 20 0t20 0" stroke="#FFD54A"/>
+   <rect x="120" y="20" width="60" height="60" rx="14"/><circle cx="150" cy="40" r="6" stroke="#FFD54A"/><circle cx="150" cy="62" r="11" stroke="#FFD54A"/>
+   <path d="M40 130h40M120 130h30" /><path d="M20 160q15 -22 30 0t30 0t30 0t30 0t30 0" stroke="#FFD54A"/>
+  </svg>
+ </div>
+</section>
+
+<section>
+ <h2>Problemă → Idee → Demo</h2>
+ <div class="card">
+  <svg viewBox="0 0 720 230" role="img" aria-label="Problemă: difuzor mut. Idee: alt mod de redare. Demo: microfon, cod, voce.">
+   <g class="st"><rect x="10" y="20" width="200" height="150" rx="16" stroke="var(--line)"/><rect x="260" y="20" width="200" height="150" rx="16" stroke="var(--line)"/><rect x="510" y="20" width="200" height="150" rx="16" stroke="var(--line)"/></g>
+   <!-- problem -->
+   <g class="st"><path d="M70 80h18l26-22v70l-26-22H70z"/><path d="M130 76l30 36M160 76l-30 36" stroke="var(--accent)"/></g>
+   <text class="tx" x="110" y="155" text-anchor="middle">1 · Problemă</text>
+   <!-- idea -->
+   <g class="st"><path d="M360 50a28 28 0 0 0-14 52v10h28v-10a28 28 0 0 0-14-52z"/><path d="M349 124h22M352 134h16"/></g>
+   <path class="sa" d="M310 40l-8-8M410 40l8-8M300 76h-10M420 76h10"/>
+   <text class="tx" x="360" y="155" text-anchor="middle">2 · Idee</text>
+   <!-- demo -->
+   <g class="st"><rect x="535" y="45" width="16" height="30" rx="8"/><path d="M530 68a13 13 0 0 0 26 0M543 82v8"/><path d="M575 66h20M590 58l8 8-8 8" stroke="var(--accent)"/><path d="M620 80h12l18-16v50l-18-16h-12z"/></g>
+   <path class="sa" d="M668 72q8 12 0 24M680 62q14 22 0 44"/>
+   <text class="tx" x="610" y="155" text-anchor="middle">3 · Demo</text>
+   <path class="sa" d="M215 95h40M247 87l8 8-8 8M465 95h40M497 87l8 8-8 8"/>
+  </svg>
+ </div>
+</section>
+
+<section>
+ <h2>Traseul</h2>
+ <div class="trail" id="trail">
+  <div class="stop"><span class="dot"></span>
+   <div class="card body">
+    <div class="meta"><span class="pill m1">M1</span><span>#1 · 2026-11-16 13:20</span><span class="pill here">Ești aici</span></div>
+    <h3>Asistentul vocal în română: sunetul merge, redarea vocii e reparată</h3>
+    <svg viewBox="0 0 300 60" width="300" role="img" aria-label="Difuzor mut devine difuzor cu sunet"><g class="st"><path d="M20 24h10l14-12v36l-14-12H20z"/><path d="M52 20l18 20M70 20l-18 20" stroke="var(--accent)"/></g><path class="sa" d="M100 30h60M150 22l10 8-10 8"/><g class="st"><path d="M190 24h10l14-12v36l-14-12h-10z"/></g><path class="sa" d="M230 22q8 8 0 16M242 16q14 14 0 28M254 10q20 20 0 40"/></svg>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section>
+ <h2>Cum folosim Claude</h2>
+ <div class="grid">
+  <div class="card tile"><div class="top"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg></div><span class="pill m1">M1</span></div><h3>Depanare în chat</h3><p>Am găsit de ce nu se aude vocea și cum se rulează corect în VS Code.</p></div>
+  <div class="card tile"><div class="top"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div><span class="pill m1">M1</span></div><h3>Script de test scris de Claude</h3><p>Un bip de test care a arătat că sunetul și dispozitivele funcționează.</p></div>
+  <div class="card tile"><div class="top"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 5l-4 14"/></svg></div><span class="pill m1">M1</span></div><h3>Rescriere de cod</h3><p>Redarea vocii cu soundfile + sounddevice și potrivirea comenzilor pe cuvinte întregi.</p></div>
+  <div class="card tile"><div class="top"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1 0 9z"/></svg></div><span class="pill m1">M1</span></div><h3>Claude Code în cloud</h3><p>A creat folderul pulse, starea echipei și commit-ul local.</p></div>
+  <div class="card tile"><div class="top"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="3"/><circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/><path d="M12 9v3M12 12l-6 3M12 12l6 3"/></svg></div><span class="pill m1">M1</span></div><h3>Subagent</h3><p>A desenat pagina de progres a echipei.</p></div>
+  <div class="card tile"><div class="top"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 3h6"/></svg></div><span class="pill m1">M1</span></div><h3>Job recurent</h3><p>Actualizează pagina de progres la fiecare 2 ore.</p></div>
+ </div>
+</section>
+
+<section>
+ <h2>Pasul următor</h2>
+ <div class="card next">
+  <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h14M12 5l7 7-7 7"/></svg></div>
+  <div><span class="pill m1">M1</span><p>Instalez soundfile, rulez noua versiune și verific că asistentul vorbește și înțelege comenzile.</p></div>
+ </div>
+</section>
+
+<footer>Făcut la Pago</footer>
+</div>
+<script type="application/json" id="pulse-data">{
+  "team": "SPLENDID",
+  "ticks": [
+    {
+      "n": 1,
+      "member": 1,
+      "time": "2026-11-16 13:20",
+      "headline": "Asistentul vocal în română: sunetul merge, redarea vocii e reparată"
+    }
+  ],
+  "members": {
+    "1": {
+      "building": "Un asistent vocal în Python, în limba română: ascultă comanda la microfon, o recunoaște cu Google și răspunde cu voce (gTTS) — spune ora și caută pe Wikipedia.",
+      "works": "Microfonul și difuzoarele sunt detectate, testul cu bip se aude, iar codul rulează corect din VS Code după salvare.",
+      "blocking": "Vocea asistentului nu se auzea: redarea prin PowerShell / Windows Media Player rămânea mută; comenzile cu „pa” și „oră” se potriveau greșit.",
+      "features": [
+        { "name": "Depanare în chat", "for": "Am găsit de ce nu se aude vocea și cum se rulează corect în VS Code." },
+        { "name": "Script de test scris de Claude", "for": "Un bip de test care a arătat că sunetul și dispozitivele funcționează." },
+        { "name": "Rescriere de cod", "for": "Redarea vocii cu soundfile + sounddevice și potrivirea comenzilor pe cuvinte întregi." },
+        { "name": "Claude Code în cloud", "for": "A creat folderul pulse, starea echipei și commit-ul local." },
+        { "name": "Subagent", "for": "A desenat pagina de progres a echipei." },
+        { "name": "Job recurent", "for": "Actualizează pagina de progres la fiecare 2 ore." }
+      ],
+      "next": "Instalez soundfile, rulez noua versiune și verific că asistentul vorbește și înțelege comenzile."
+    }
+  }
+}</script>
+</body>
+</html>
