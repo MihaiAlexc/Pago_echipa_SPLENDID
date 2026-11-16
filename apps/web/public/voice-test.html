@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test voce</title>
+  <style>
+    :root { --bg: #fff; --fg: #111; --muted: #555; --card: #f3f4f6; --accent: #0a7d4f; --bad: #b42318; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #111; --fg: #f5f5f5; --muted: #aaa; --card: #1f2328; --accent: #3ccf8e; --bad: #ff6b5e; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 18px/1.4 system-ui, sans-serif; }
+    h1 { font-size: 24px; margin: 0 0 12px; }
+    section { background: var(--card); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    h2 { font-size: 19px; margin: 0 0 8px; }
+    button { width: 100%; min-height: 56px; font-size: 19px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; margin: 6px 0; }
+    button.secondary { background: var(--muted); }
+    select, input { width: 100%; min-height: 48px; font-size: 17px; margin: 6px 0; }
+    .muted { color: var(--muted); font-size: 15px; }
+    .ok { color: var(--accent); } .bad { color: var(--bad); }
+    #transcript { min-height: 60px; font-size: 20px; white-space: pre-wrap; }
+    pre { white-space: pre-wrap; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Test de voce (Pasul 0)</h1>
+  <p class="muted">Deschide pagina în Chrome pe telefon, prin HTTPS (tunel). La final, copiază raportul în jurnalul din IMPLEMENTATION_PLAN.md.</p>
+
+  <section>
+    <h2>1. Suport în browser</h2>
+    <div id="support"></div>
+  </section>
+
+  <section>
+    <h2>2. Voce → text (ro-RO)</h2>
+    <p class="muted">Încearcă: „Plătește factura la curent”, „o sută optzeci și șapte lei și patruzeci de bani”, „da”, „nu”, „plec în Turcia”.</p>
+    <button id="listen">🎤 Ascultă</button>
+    <div id="transcript" aria-live="polite"></div>
+    <div id="sttStatus" class="muted"></div>
+  </section>
+
+  <section>
+    <h2>3. Text → voce (ro-RO)</h2>
+    <select id="voice"></select>
+    <input id="say" value="Factura la curent este de 187,40 lei, scadentă în 3 zile. O plătesc acum?" />
+    <button id="speak">🔊 Vorbește</button>
+    <button id="stop" class="secondary">⏹ Oprește</button>
+  </section>
+
+  <section>
+    <h2>4. Raport</h2>
+    <pre id="report"></pre>
+    <button id="copy" class="secondary">Copiază raportul</button>
+  </section>
+
+<script>
+  const log = [];
+  const report = document.getElementById("report");
+  function note(line) { log.push(line); report.textContent = log.join("\n"); }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const hasTTS = "speechSynthesis" in window;
+  const secure = window.isSecureContext;
+  document.getElementById("support").innerHTML = [
+    ["Context securizat (HTTPS)", secure],
+    ["Recunoaștere vocală (STT)", !!SR],
+    ["Sinteză vocală (TTS)", hasTTS],
+  ].map(([k, v]) => `<div class="${v ? "ok" : "bad"}">${v ? "✅" : "❌"} ${k}</div>`).join("");
+  note(`Browser: ${navigator.userAgent}`);
+  note(`HTTPS: ${secure} | STT: ${!!SR} | TTS: ${hasTTS}`);
+
+  // --- STT ---
+  const transcriptEl = document.getElementById("transcript");
+  const sttStatus = document.getElementById("sttStatus");
+  const listenBtn = document.getElementById("listen");
+  if (!SR) { listenBtn.disabled = true; sttStatus.textContent = "Browserul nu suportă recunoașterea vocală."; }
+  listenBtn.onclick = () => {
+    const rec = new SR();
+    rec.lang = "ro-RO";
+    rec.interimResults = true;
+    rec.maxAlternatives = 3;
+    rec.onstart = () => { sttStatus.textContent = "Ascult…"; listenBtn.textContent = "🎤 Ascult…"; };
+    rec.onresult = (e) => {
+      const res = e.results[e.results.length - 1];
+      transcriptEl.textContent = res[0].transcript;
+      if (res.isFinal) {
+        const alts = Array.from(res).map((a) => `"${a.transcript}" (${(a.confidence * 100).toFixed(0)}%)`).join(" | ");
+        note(`STT: ${alts}`);
+      }
+    };
+    rec.onerror = (e) => { sttStatus.textContent = `Eroare: ${e.error}`; note(`STT eroare: ${e.error}`); };
+    rec.onend = () => { listenBtn.textContent = "🎤 Ascultă"; if (sttStatus.textContent === "Ascult…") sttStatus.textContent = ""; };
+    rec.start();
+  };
+
+  // --- TTS ---
+  const voiceSel = document.getElementById("voice");
+  let voices = [];
+  function loadVoices() {
+    voices = speechSynthesis.getVoices();
+    const ro = voices.filter((v) => v.lang.toLowerCase().startsWith("ro"));
+    const list = ro.length ? ro : voices;
+    voiceSel.innerHTML = list.map((v) => `<option value="${v.name}">${v.name} (${v.lang})${v.localService ? "" : " ☁"}</option>`).join("");
+    if (voices.length) note(`Voci TTS: ${voices.length} total, ${ro.length} românești${ro.length ? ": " + ro.map((v) => v.name).join(", ") : " ❌"}`);
+  }
+  if (hasTTS) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+  document.getElementById("speak").onclick = () => {
+    const u = new SpeechSynthesisUtterance(document.getElementById("say").value);
+    u.lang = "ro-RO";
+    const v = voices.find((x) => x.name === voiceSel.value);
+    if (v) u.voice = v;
+    u.onerror = (e) => note(`TTS eroare: ${e.error}`);
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  };
+  document.getElementById("stop").onclick = () => speechSynthesis.cancel();
+
+  document.getElementById("copy").onclick = () => {
+    navigator.clipboard?.writeText(report.textContent).then(() => alert("Copiat"), () => alert("Nu am putut copia — selectează textul manual."));
+  };
+</script>
+</body>
+</html>
