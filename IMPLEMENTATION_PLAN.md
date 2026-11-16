@@ -452,3 +452,9 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
   - Server: `POST /api/bills` (validare: tip, furnizor, sumă 0–100.000, dată) și `DELETE /api/bills/:id`. Asistentul lucrează pe aceeași listă, deci plătește și facturile adăugate de utilizator.
   - Web: `apps/web/src/speech.ts` (interfețele `SpeechToText` / `TextToSpeech` + implementarea din browser), `Bills.tsx`, `App.tsx`, `app.css`. Pe ecran lat: facturile lângă chat; pe telefon: una sub alta.
   - 101 teste trec. Verificat în browser: adăugare, ștergere, „Plătește” → „da” → factura devine „Plătită”. **Neverificat încă:** microfonul și vocea pe telefon (în browserul de dezvoltare nu există microfon și nici voce română).
+- **2026-11-16 — Model simulat mai deștept** (`apps/server/src/agent/scripted.ts`, teste în `tests/dialogues/scripted.test.ts`):
+  - Plăți: una, mai multe („curentul și apa”), toate, doar cele întârziate; alegere din listă („a doua”); corecturi („nu, factura de apă” înlocuiește plata pregătită).
+  - Întrebări: cât am de plată (și ce e întârziat), cât e / când e scadentă factura la X → „da” o pregătește.
+  - Mașina: până când e valabil RCA-ul / rovinieta, RCA expirat, oferte RCA / rovinietă / vinietă Bulgaria / roaming / cartelă, alegerea ofertei („a doua”, „cea mai ieftină”, „12 luni”, „cu Turcia”) → cumpărare cu aceeași confirmare.
+  - Sinonime (lumină, gazele, net, mobil, achită...) și toleranță la o literă greșită (greșeli de recunoaștere vocală). Salut, mulțumesc, „ce poți face?”.
+  - Siguranța rămâne în cod (confirmarea nu depinde de model). 124 de teste trec; verificat live prin `/api/chat`.

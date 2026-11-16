@@ -40,7 +40,7 @@ describe("D2 — cerere ambiguă", () => {
 
     const t1 = await h.say("Plătește o factură.");
     expect(names(t1)).toEqual(["list_bills"]); // fără prepare_payment: nu ghicim
-    expect(t1.reply).toBe("Ai trei facturi neplătite: curent 187,40 lei, gaz 94,20 lei și apă 56 de lei. Pe care vrei s-o plătesc?");
+    expect(t1.reply).toBe("Ai trei facturi neplătite: curent 187,40 lei, gaz 94,20 lei și apă 56 de lei. Pe care vrei s-o plătesc? Pot să le plătesc și pe toate.");
     expect(t1.pending).toBeNull();
 
     const t2 = await h.say("Cea la gaz.");
@@ -133,7 +133,7 @@ describe("„Cât am de plată?”", () => {
     const h = createHarness(new ScriptedLlm());
     const t = await h.say("Cât am de plată luna asta?");
     expect(names(t)).toEqual(["list_bills"]);
-    expect(t.reply).toBe("Ai trei facturi de plată, în total 337,60 lei: curent 187,40 lei, gaz 94,20 lei și apă 56 de lei.");
+    expect(t.reply).toBe("Ai trei facturi de plată, în total 337,60 lei: curent 187,40 lei, gaz 94,20 lei și apă 56 de lei. Factura la gaz e întârziată.");
   });
 });
 
