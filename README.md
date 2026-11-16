@@ -1,0 +1,1 @@
+# Pago_echipa_SPLENDID
