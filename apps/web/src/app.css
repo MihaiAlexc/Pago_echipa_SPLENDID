@@ -95,6 +95,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .voice-toggle span { font-size: 22px; }
 .voice-toggle.on { background: var(--yes); border-color: var(--yes); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+.voice-pick { padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 15px; }
+.voice-pick label { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.voice-pick select { flex: 1; min-width: 0; min-height: 44px; font-size: 15px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); color: var(--ink); }
+.warn { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--ink); font-size: 14px; }
 
 .confirm { background: var(--surface); border: 2px solid var(--accent); border-radius: 18px; padding: 16px; }
 .confirm h2 { margin: 0 0 8px; font-size: 20px; }

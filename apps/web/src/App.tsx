@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatLei, type Bill, type PendingPaymentForClient } from "@pago/shared";
 import { Bills } from "./Bills.tsx";
 import { Car, type CarData } from "./Car.tsx";
-import { BrowserSpeechToText, BrowserTextToSpeech } from "./speech.ts";
+import { BrowserSpeechToText, BrowserTextToSpeech, type VoiceOption } from "./speech.ts";
 import "./app.css";
 
 /** `shown` = câte caractere se văd (textul apare treptat cât timp asistentul vorbește). */
@@ -49,6 +49,26 @@ export function App() {
 
   const stt = useMemo(() => new BrowserSpeechToText(), []);
   const tts = useMemo(() => new BrowserTextToSpeech(), []);
+  const [voiceList, setVoiceList] = useState<VoiceOption[]>([]);
+  const [voiceName, setVoiceName] = useState<string | null>(null);
+
+  // Vocile apar asincron; le reîncărcăm când se schimbă lista.
+  useEffect(() => {
+    const refresh = () => {
+      setVoiceList(tts.voices());
+      setVoiceName(tts.currentVoiceName());
+    };
+    refresh();
+    return tts.onVoicesChanged(refresh);
+  }, [tts]);
+
+  const hasRomanianVoice = voiceList.some((v) => v.romanian);
+
+  function chooseVoice(name: string) {
+    tts.setPreferred(name || null);
+    setVoiceName(tts.currentVoiceName());
+    if (voiceOn) botSays("Așa sună vocea asta.", true);
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -240,6 +260,27 @@ export function App() {
               <button className="small-btn" onClick={stopSpeaking}>Oprește</button>
             )}
           </div>
+          {tts.supported && (
+            <div className="voice-pick">
+              <label>
+                Vocea
+                <select value={voiceName ?? ""} onChange={(e) => chooseVoice(e.target.value)} aria-label="Alege vocea asistentului">
+                  {!voiceName && <option value="">Implicită a browserului</option>}
+                  {voiceList.map((v) => (
+                    <option key={v.name} value={v.name}>
+                      {v.romanian ? "🇷🇴 " : ""}{v.name} ({v.lang})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {!hasRomanianVoice && voiceList.length > 0 && (
+                <p className="warn">
+                  Acest browser nu are o voce în română, așa că textul e citit cu accent străin.
+                  Deschide pagina în <b>Microsoft Edge</b> (are voci românești naturale) sau pe telefon, în Chrome pe Android.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="chat" aria-live="polite">
             {messages.map((m) => {

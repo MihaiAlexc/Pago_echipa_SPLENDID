@@ -97,17 +97,79 @@ export class BrowserSpeechToText implements SpeechToText {
   }
 }
 
+/** O voce pe care o poate alege utilizatorul. */
+export interface VoiceOption {
+  name: string;
+  lang: string;
+  romanian: boolean;
+}
+
+const VOICE_KEY = "pago.voice";
+
 export class BrowserTextToSpeech implements TextToSpeech {
-  constructor(private lang = "ro-RO") {}
+  /** Vocea aleasă de utilizator (numele ei); dacă lipsește, alegem automat. */
+  private preferred: string | null = null;
+
+  constructor(private lang = "ro-RO") {
+    try {
+      this.preferred = localStorage.getItem(VOICE_KEY);
+    } catch {
+      /* fără localStorage */
+    }
+  }
 
   get supported() {
     return "speechSynthesis" in window;
   }
 
+  private isRomanian(v: SpeechSynthesisVoice) {
+    return v.lang.toLowerCase().replace("_", "-").startsWith("ro");
+  }
+
+  /** Vocile disponibile: cele românești primele, cele mai naturale primele. */
+  voices(): VoiceOption[] {
+    if (!this.supported) return [];
+    return speechSynthesis
+      .getVoices()
+      .map((v) => ({ v, score: (this.isRomanian(v) ? 100 : 0) + (/natural|online|neural|google/i.test(v.name) ? 10 : 0) }))
+      .sort((a, b) => b.score - a.score || a.v.name.localeCompare(b.v.name))
+      .map(({ v }) => ({ name: v.name, lang: v.lang, romanian: this.isRomanian(v) }));
+  }
+
+  /** Există măcar o voce românească în acest browser? */
+  hasRomanian(): boolean {
+    return this.supported && speechSynthesis.getVoices().some((v) => this.isRomanian(v));
+  }
+
+  /** Numele vocii care va fi folosită acum. */
+  currentVoiceName(): string | null {
+    return this.voice()?.name ?? null;
+  }
+
+  setPreferred(name: string | null) {
+    this.preferred = name;
+    try {
+      if (name) localStorage.setItem(VOICE_KEY, name);
+      else localStorage.removeItem(VOICE_KEY);
+    } catch {
+      /* fără localStorage */
+    }
+  }
+
+  /** Vocile se încarcă asincron în unele browsere; anunțăm când apar. */
+  onVoicesChanged(cb: () => void) {
+    if (!this.supported) return () => {};
+    speechSynthesis.addEventListener("voiceschanged", cb);
+    return () => speechSynthesis.removeEventListener("voiceschanged", cb);
+  }
+
   private voice(): SpeechSynthesisVoice | undefined {
-    const voices = speechSynthesis.getVoices();
-    return voices.find((v) => v.lang.toLowerCase() === this.lang.toLowerCase())
-      ?? voices.find((v) => v.lang.toLowerCase().startsWith(this.lang.slice(0, 2).toLowerCase()));
+    const all = speechSynthesis.getVoices();
+    const chosen = this.preferred ? all.find((v) => v.name === this.preferred) : undefined;
+    if (chosen) return chosen;
+    // Automat: cea mai naturală voce românească (ex. „Microsoft Alina Online (Natural)” în Edge, „Google română” pe Android).
+    const ro = all.filter((v) => this.isRomanian(v));
+    return ro.find((v) => /natural|online|neural/i.test(v.name)) ?? ro.find((v) => /google/i.test(v.name)) ?? ro[0];
   }
 
   speak(text: string, onProgress?: (chars: number) => void): Promise<void> {
