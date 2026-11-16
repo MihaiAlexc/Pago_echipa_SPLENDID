@@ -50,10 +50,21 @@ export function App() {
     }
   }, []);
 
+  /** D4: dacă ceva expiră, asistentul începe el conversația (o dată pe sesiune). */
+  const loadProactive = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/proactive?sessionId=${sessionId}`).then((x) => x.json());
+      if (r.message) setMessages([{ from: "bot", text: r.message }]);
+    } catch {
+      /* fără mesaj proactiv */
+    }
+  }, []);
+
   useEffect(() => {
     fetch("/api/health").then((r) => r.json()).then((h) => setMode(h.llmMode)).catch(() => setMode("offline"));
     loadBills();
-  }, [loadBills]);
+    loadProactive();
+  }, [loadBills, loadProactive]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -143,6 +154,7 @@ export function App() {
     setPending(null);
     setMessages([{ from: "bot", text: "Am pornit povestea de la început. Cu ce te pot ajuta?" }]);
     loadBills();
+    loadProactive();
   }
 
   const micLabel =

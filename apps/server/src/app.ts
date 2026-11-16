@@ -68,6 +68,12 @@ export function buildApp(options: AppOptions = {}) {
 
   // ---------- Conversația cu asistentul ----------
 
+  // D4: la deschiderea aplicației, un mesaj proactiv (o singură dată pe sesiune), dacă ceva expiră.
+  app.get<{ Querystring: { sessionId?: string } }>("/api/proactive", async (req, reply) => {
+    if (!req.query.sessionId) return reply.status(400).send({ error: "BAD_REQUEST", message: "Lipsește sessionId." });
+    return { message: agent.proactiveGreeting(req.query.sessionId) };
+  });
+
   app.post<{ Body: { sessionId?: string; message?: string } }>("/api/chat", async (req, reply) => {
     const { sessionId, message } = req.body ?? {};
     if (!sessionId || typeof message !== "string" || !message.trim()) {

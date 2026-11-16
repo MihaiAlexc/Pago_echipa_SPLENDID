@@ -289,13 +289,13 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
 
 ### Pas 4 — Motor de scenarii proactive
 **Ce învățăm:** diferența dintre reguli (deterministe) și limbaj (LLM); cum se adaugă o țară nouă fără să schimbi codul agentului.
-- [ ] Reguli declarative în fișiere de date, per țară. Prioritate:
-  1. Turcia (Carte Verde, rovinietă, roaming/cartelă) — D3
-  2. Alte țări de călătorie (aceeași mecanică, reguli diferite)
-  3. Termene care expiră — D4
-  4. Mașină nouă / mutare
-- [ ] Agentul transformă rezultatul într-o conversație: ce ai deja, ce lipsește, propune pe rând.
-- [ ] Regulile pentru fiecare țară sunt verificate din surse oficiale sau marcate clar ca „exemplu".
+- [x] Reguli declarative în fișiere de date, per țară (`apps/server/src/scenarios/countries.json`). Prioritate:
+  1. [x] Turcia (RCA cu Carte Verde pentru TR, vinietă Bulgaria pe drum, roaming/cartelă) — D3
+  2. [x] Alte țări de călătorie: Bulgaria, Grecia (aceeași mecanică, reguli diferite)
+  3. [x] Termene care expiră — D4 (`get_expiring_items` + mesaj proactiv la deschidere)
+  4. [ ] Mașină nouă / mutare (tăiat deocamdată, conform ordinii din secțiunea 11)
+- [x] Agentul transformă rezultatul într-o conversație: ce ai deja, ce lipsește, propune pe rând.
+- [x] Regulile pentru fiecare țară sunt marcate clar ca „exemplu” (`verified: false`). **Încă de verificat din surse oficiale.**
 
 **Gata când:** D3 și D4 trec automat; țară necunoscută → mesajul cinstit din D5; adăugarea unei țări noi nu cere modificări în agent.
 
@@ -458,3 +458,12 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
   - Mașina: până când e valabil RCA-ul / rovinieta, RCA expirat, oferte RCA / rovinietă / vinietă Bulgaria / roaming / cartelă, alegerea ofertei („a doua”, „cea mai ieftină”, „12 luni”, „cu Turcia”) → cumpărare cu aceeași confirmare.
   - Sinonime (lumină, gazele, net, mobil, achită...) și toleranță la o literă greșită (greșeli de recunoaștere vocală). Salut, mulțumesc, „ce poți face?”.
   - Siguranța rămâne în cod (confirmarea nu depinde de model). 124 de teste trec; verificat live prin `/api/chat`.
+- **2026-11-16 — Pas 4 gata:**
+  - `apps/server/src/scenarios/countries.json`: reguli pentru Turcia, Bulgaria, Grecia (toate `verified: false`). O țară nouă = un obiect nou în JSON (testat: Ungaria adăugată doar din date).
+  - `apps/server/src/scenarios/trips.ts`: `runTripChecklist` (RCA valabil pe toată durata + Carte Verde pentru țară, viniete pe drum, internet; motivul exact: expirat / expiră înainte de plecare / în timpul călătoriei / nu acoperă țara) și `getExpiringItems`.
+  - Tool-uri noi: `run_trip_checklist`, `get_expiring_items`; prompt cu regulile pentru călătorii (propune pe rând, nu toate odată).
+  - D4: `GET /api/proactive` → „Bună, Maria! RCA-ul tău expiră în 6 zile. Vrei să-l reînnoiesc?”, o singură dată pe sesiune; pagina îl afișează la deschidere.
+  - Modelul simulat: dialogul Turcia complet (mașina? → ce lipsește → RCA → vinietă BG → internet: roaming sau cartelă → „Drum bun!”), ramura fără mașină; țară necunoscută → răspuns cinstit.
+  - **Notă:** în povestea Mariei, RCA-ul expiră în 6 zile, iar „săptămâna viitoare” = peste 7 zile, deci asistentul spune corect „înainte de plecare” (nu „în timpul călătoriei”, ca în textul inițial D3).
+  - 140 de teste trec; build OK; D3 și D4 verificate live.
+- **Următorul pas:** Pas 7 (accesibilitate, corecturi) / Pas 8 (teste de robustețe). Pașii 5 și 6 sunt în mare parte făcuți (pagina, chat, voce); rămâne testul pe telefon.

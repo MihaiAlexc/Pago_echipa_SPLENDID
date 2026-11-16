@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { daysBetween, type Bill, type PaymentRequestItem, type ProductType } from "@pago/shared";
 import { PagoError, type PagoStore } from "../mock/store.ts";
 import type { PaymentConfirmation } from "../payments/confirmation.ts";
+import { getExpiringItems, runTripChecklist } from "../scenarios/trips.ts";
 
 /**
  * Tool-urile pe care le poate apela LLM-ul.
@@ -57,6 +58,29 @@ export const TOOL_DEFINITIONS: Anthropic.Beta.BetaTool[] = [
       type: "object",
       properties: { type: { type: "string", enum: ["rca", "vignette", "roaming", "sim"] } },
       required: ["type"],
+    },
+  },
+  {
+    name: "run_trip_checklist",
+    description:
+      "Verifică ce îi trebuie utilizatorului pentru o călătorie într-o țară, după reguli fixe (RCA / Carte Verde, viniete pe drum, internet). Întoarce ce are deja, ce lipsește și produsul sugerat pentru fiecare lipsă. Dacă țara nu e cunoscută, întoarce known=false: atunci spune cinstit că nu ai informații. Dacă withCar=null, întreabă întâi dacă ia mașina. Regulile sunt exemple (verified=false).",
+    input_schema: {
+      type: "object",
+      properties: {
+        country: { type: "string", description: "Numele țării, ex. „Turcia”" },
+        startInDays: { type: "number", description: "Peste câte zile pleacă (implicit 7)" },
+        days: { type: "number", description: "Câte zile durează călătoria (implicit 7)" },
+        withCar: { type: "boolean", description: "Dacă ia mașina; omite dacă nu știi încă" },
+      },
+      required: ["country"],
+    },
+  },
+  {
+    name: "get_expiring_items",
+    description: "Ce expiră sau e scadent în următoarele N zile (RCA, rovinietă, facturi), cel mai urgent primul. daysLeft negativ = deja expirat / întârziat.",
+    input_schema: {
+      type: "object",
+      properties: { days: { type: "number", description: "Implicit 30" } },
     },
   },
   {
@@ -126,6 +150,18 @@ export function executeTool(ctx: ToolContext, name: string, input: unknown): Too
         };
       case "search_products":
         return { ok: true, data: ctx.store.searchProducts(args.type as ProductType) };
+      case "run_trip_checklist":
+        return {
+          ok: true,
+          data: runTripChecklist(ctx.store, {
+            country: String(args.country ?? ""),
+            startInDays: typeof args.startInDays === "number" ? args.startInDays : undefined,
+            days: typeof args.days === "number" ? args.days : undefined,
+            withCar: typeof args.withCar === "boolean" ? args.withCar : undefined,
+          }),
+        };
+      case "get_expiring_items":
+        return { ok: true, data: getExpiringItems(ctx.store, typeof args.days === "number" ? args.days : 30) };
       case "prepare_payment": {
         const items = parseItems(args.items);
         const { token: _secret, ...summary } = ctx.confirmation.prepare(ctx.sessionId, items); // token-ul NU ajunge la LLM

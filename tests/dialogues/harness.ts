@@ -28,6 +28,7 @@ export function createHarness(llm: LlmClient) {
   const turns: ChatResult[] = [];
 
   return {
+    agent,
     store,
     confirmation,
     spy,

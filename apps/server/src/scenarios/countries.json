@@ -1,0 +1,99 @@
+{
+  "_info": "Reguli declarative pentru călătorii. TOATE sunt EXEMPLE (verified=false) și trebuie verificate din surse oficiale înainte de a fi prezentate ca adevărate. Ca să adaugi o țară: adaugi un obiect aici; codul agentului nu se schimbă.",
+  "countries": [
+    {
+      "code": "TR",
+      "name": "Turcia",
+      "inName": "în Turcia",
+      "aliases": ["turcia", "turciei", "istanbul", "antalya"],
+      "verified": false,
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabilă în Turcia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m-tr"
+        },
+        {
+          "id": "vignette-bg",
+          "when": "car",
+          "check": "vignette",
+          "country": "BG",
+          "label": "Vinietă pentru Bulgaria (pe drum)",
+          "short": "vinieta pentru Bulgaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-bg-7z"
+        },
+        {
+          "id": "internet",
+          "when": "always",
+          "check": "service",
+          "country": "TR",
+          "label": "Internet în Turcia (roaming sau cartelă locală)",
+          "short": "internetul",
+          "productType": "roaming",
+          "alternatives": ["roaming", "sim"]
+        }
+      ]
+    },
+    {
+      "code": "BG",
+      "name": "Bulgaria",
+      "inName": "în Bulgaria",
+      "aliases": ["bulgaria", "bulgariei", "sofia", "varna", "burgas"],
+      "verified": false,
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA valabil în Bulgaria",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-bg",
+          "when": "car",
+          "check": "vignette",
+          "country": "BG",
+          "label": "Vinietă pentru Bulgaria",
+          "short": "vinieta pentru Bulgaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-bg-7z"
+        }
+      ]
+    },
+    {
+      "code": "GR",
+      "name": "Grecia",
+      "inName": "în Grecia",
+      "aliases": ["grecia", "greciei", "thassos", "salonic"],
+      "verified": false,
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA valabil în Grecia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-bg",
+          "when": "car",
+          "check": "vignette",
+          "country": "BG",
+          "label": "Vinietă pentru Bulgaria (pe drum)",
+          "short": "vinieta pentru Bulgaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-bg-7z"
+        }
+      ]
+    }
+  ]
+}

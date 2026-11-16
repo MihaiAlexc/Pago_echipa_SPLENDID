@@ -103,7 +103,17 @@ interface Turn {
   results: { name: string; input: Record<string, unknown>; data: unknown; ok: boolean }[];
   lastAssistantText: string;
   lastAssistantNorm: string;
+  /** Ultima verificare de călătorie din conversație (ca să știm la ce țară ne referim mai târziu). */
+  tripInput: Record<string, unknown> | null;
 }
+
+type TripItem = {
+  id: string; short: string; status: "ok" | "missing"; reasons: string[]; currentDaysLeft?: number;
+  productType: ProductType; alternatives?: ProductType[]; suggestedProduct?: { id: string; name: string; price: number };
+};
+type TripCheck =
+  | { known: false; country: string }
+  | { known: true; country: string; name: string; inName: string; withCar: boolean | null; items: TripItem[] };
 
 /** Vedere simplă asupra blocurilor unui mesaj: doar câmpurile de care are nevoie simularea. */
 interface LooseBlock {
@@ -126,7 +136,10 @@ function readTurn(messages: Anthropic.Beta.BetaMessageParam[]): Turn {
     const m = messages[i];
     if (m.role === "user" && blocks(m).some((b) => b.type === "text")) { start = i; break; }
   }
-  const turn: Turn = { userText: "", norm: "", words: [], event: null, results: [], lastAssistantText: "", lastAssistantNorm: "" };
+  const turn: Turn = { userText: "", norm: "", words: [], event: null, results: [], lastAssistantText: "", lastAssistantNorm: "", tripInput: null };
+  for (const m of messages) {
+    for (const b of blocks(m)) if (b.type === "tool_use" && b.name === "run_trip_checklist") turn.tripInput = b.input ?? null;
+  }
   if (start < 0) return turn;
 
   for (const b of blocks(messages[start])) {
@@ -187,11 +200,22 @@ function decide(t: Turn): Action {
     return { text: "Pot să-ți plătesc facturile, să-ți spun ce ai de plată și când e scadența, să verific RCA-ul și rovinieta și să-ți arăt oferte de RCA, viniete sau roaming. Plățile le fac doar după ce îmi spui „da”." };
   }
 
-  // Călătorii: încă nu avem reguli pentru nicio țară → răspuns cinstit (D5). Turcia vine la Pasul 4.
-  const trip = t.norm.match(/\b(?:plec|plecam|merg|mergem|calatoresc|calatorim|zbor)\b.*?\b(?:in|spre|catre|la) ([a-z]+)/);
+  // ---------- Călătorii (D3): regulile decid, eu doar povestesc ----------
+  const trip = t.norm.match(/\b(?:plec|plecam|merg|mergem|calatoresc|calatorim|zbor|zburam|duc)\b.*?\b(?:in|spre|catre|la) ([a-z]+)/);
   if (trip && !categories.length) {
-    const country = originalWord(t.userText, trip[1]);
-    return { text: `Pentru ${country} nu am încă informații despre ce acte sunt necesare, deci nu vreau să-ți dau indicații greșite. Te pot ajuta cu facturile sau cu roamingul.` };
+    const withCar = /\bcu masina\b/.test(t.norm) ? true : /\b(avion|avionul|autocar|autocarul|trenul|tren|fara masina)\b/.test(t.norm) ? false : undefined;
+    return startTrip(t, { country: trip[1], startInDays: startInDays(t.norm), ...(withCar === undefined ? {} : { withCar }) }, trip[1]);
+  }
+  if (t.tripInput && /\bmasina o iei\b/.test(asked)) {
+    const no = w[0] === "nu" || has("avion", "avionul", "autocar", "autocarul", "tren", "trenul", "fara");
+    const yes = w[0] === "da" || has("iau", "sigur", "masina");
+    if (no || yes) return startTrip(t, { ...t.tripInput, withCar: !no }, String(t.tripInput.country));
+  }
+  if (t.tripInput && w.length <= 5 && w[0] === "da" && /\bincepem cu\b/.test(asked)) return nextTripStep(t, "");
+  if (/\bpachetele de roaming\b/.test(asked)) {
+    const country = countryIn(normalize(String(t.tripInput?.country ?? ""))) ?? countryIn(asked);
+    if (has("cartela", "cartele", "locala", "sim")) return offers(t, "sim", country);
+    if (w[0] === "da" || has("roaming", "pachet", "pachetele", "pachetul", "roamingul")) return offers(t, "roaming", country);
   }
 
   // Răspuns scurt la o întrebare de-a mea („Vrei să-l reînnoiesc?” → „da”).
@@ -443,6 +467,85 @@ function chooseOffer(t: Turn, type: ProductType, country: string | null, forced?
   return { text: `${pick.name} costă ${spokenLei(pick.price)}.${screen} ${pronoun} cumpăr?` };
 }
 
+// ---------- călătorii ----------
+
+function tripResult(t: Turn): TripCheck | null {
+  const r = [...t.results].reverse().find((x) => x.name === "run_trip_checklist");
+  return r && r.ok ? (r.data as TripCheck) : null;
+}
+
+function startTrip(t: Turn, input: Record<string, unknown>, spokenCountry: string): Action {
+  const check = tripResult(t);
+  if (!check || (check.known && input.withCar !== undefined && check.withCar !== input.withCar)) {
+    return call("run_trip_checklist", input);
+  }
+  if (!check.known) {
+    const country = originalWord(t.userText, spokenCountry);
+    return { text: `Pentru ${country} nu am încă informații despre ce acte sunt necesare, deci nu vreau să-ți dau indicații greșite. Te pot ajuta cu facturile sau cu roamingul.` };
+  }
+  if (check.withCar === null) return { text: "Pot să te ajut să te pregătești. Mașina o iei cu tine?" };
+
+  const missing = check.items.filter((i) => i.status === "missing");
+  if (!missing.length) return { text: `Am verificat: ai tot ce-ți trebuie ${check.inName}. Drum bun!` };
+
+  // Fără mașină sau doar internetul lipsește → direct la internet.
+  const carMissing = missing.filter((i) => i.id !== "internet");
+  if (!carMissing.length) {
+    return { text: `${check.withCar === false ? "Atunci ai" : "Ai"} nevoie în principal de internet ${check.inName}. Îți arăt pachetele de roaming sau o cartelă locală?` };
+  }
+
+  const sentences = carMissing.map((i) => describeMissing(i, check.name));
+  const n = check.items.length;
+  return { text: `Am verificat ${COUNT_WORDS[n] ?? n} lucruri. ${sentences.join(" ")} Începem cu ${carMissing[0].short}?` };
+}
+
+function describeMissing(i: TripItem, countryName: string): string {
+  if (i.id === "rca") {
+    const d = i.currentDaysLeft ?? 0;
+    const parts: string[] = [];
+    if (i.reasons.includes("missing")) parts.push("nu ai RCA");
+    if (i.reasons.includes("expired")) parts.push("RCA-ul tău a expirat");
+    if (i.reasons.includes("expires_before_trip")) parts.push(`RCA-ul tău expiră în ${d} ${zile(d)}, înainte de plecare`);
+    if (i.reasons.includes("expires_during_trip")) parts.push(`RCA-ul tău expiră în ${d} ${zile(d)}, deci în timpul călătoriei`);
+    if (i.reasons.includes("not_covered")) parts.push(`Cartea Verde actuală nu acoperă ${countryName}`);
+    return capitalize(parts.join(", iar ")) + ".";
+  }
+  return `Îți lipsește și ${i.short}.`;
+}
+
+/** Propune următorul lucru care lipsește din călătorie. `prefix` = „Gata. ” după o cumpărare. */
+function nextTripStep(t: Turn, prefix: string): Action {
+  const check = tripResult(t);
+  if (!check) return call("run_trip_checklist", { ...t.tripInput });
+  if (!check.known) return { text: `${prefix}Spune-mi dacă mai ai nevoie de ceva.`.trim() };
+
+  const next = check.items.find((i) => i.status === "missing");
+  if (!next) return { text: `${prefix}Acum ai tot ce-ți trebuie ${check.inName}. Drum bun!` };
+
+  if (next.alternatives?.length || !next.suggestedProduct) {
+    return { text: `${prefix}Mai ai nevoie și de internet ${check.inName}. Îți arăt pachetele de roaming sau o cartelă locală?` };
+  }
+
+  const p = next.suggestedProduct;
+  const prepared = t.results.find((r) => r.name === "prepare_payment");
+  if (!prepared) return call("prepare_payment", { items: [{ kind: "product", productId: p.id }] });
+  if (!prepared.ok) return { text: "Nu am putut pregăti plata. Mai încerci o dată?" };
+  const pronoun = next.productType === "rca" || next.productType === "roaming" ? "Îl" : "O";
+  const screen = p.price > 500 ? " E peste 500 de lei, așa că o confirmi cu butonul de pe ecran." : "";
+  if (prefix) return { text: `${prefix}Urmează ${next.short}: ${shortName({ ...p, type: next.productType, durationDays: 0 })} costă ${spokenLei(p.price)}.${screen} ${pronoun} cumpăr?` };
+  return { text: `${p.name} costă ${spokenLei(p.price)}.${screen} ${pronoun} cumpăr?` };
+}
+
+/** „săptămâna viitoare” → 7, „mâine” → 1, „peste 10 zile” → 10. Implicit 7. */
+function startInDays(norm: string): number {
+  if (/\bpoimaine\b/.test(norm)) return 2;
+  if (/\bmaine\b/.test(norm)) return 1;
+  if (/\bluna viitoare\b/.test(norm)) return 30;
+  const peste = norm.match(/\bpeste (\d+) zile\b/);
+  if (peste) return Number(peste[1]);
+  return 7;
+}
+
 // ---------- după o decizie luată în cod ----------
 
 function afterEvent(t: Turn): Action {
@@ -456,6 +559,8 @@ function afterEvent(t: Turn): Action {
       return { text: `Plata nu a reușit: ${String(e.message)}` };
     case "confirmed": {
       const payment = e.payment as { total: number; lines: { kind: string; refId: string; label: string }[] };
+      // În mijlocul pregătirii unei călătorii → propunem următorul lucru (D3).
+      if (t.tripInput && payment.lines.some((l) => l.kind === "product")) return nextTripStep(t, "Gata. ");
       const bills = result<BillView[]>(t, "list_bills");
       if (!bills) return call("list_bills", {});
       const what = joinRo(payment.lines.map((l) => (l.kind === "bill" ? bills.find((b) => b.id === l.refId)?.categoryRo ?? l.label : l.label)));

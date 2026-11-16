@@ -4,7 +4,8 @@ import type { PagoStore } from "../mock/store.ts";
 import type { PaymentConfirmation, TurnOutcome } from "../payments/confirmation.ts";
 import { EVENT_TAG, type LlmClient } from "./llm.ts";
 import { SYSTEM_PROMPT } from "./prompt.ts";
-import { TOOL_DEFINITIONS, executeTool, type ToolResult } from "./tools.ts";
+import { CATEGORY_RO, TOOL_DEFINITIONS, executeTool, type ToolResult } from "./tools.ts";
+import { getExpiringItems } from "../scenarios/trips.ts";
 
 /** Câte runde model → tool-uri permitem într-o singură tură (protecție împotriva buclelor). */
 const MAX_STEPS = 8;
@@ -42,6 +43,46 @@ export class Agent {
 
   clearSessions() {
     this.sessions.clear();
+    this.greeted.clear();
+  }
+
+  private greeted = new Set<string>();
+
+  /**
+   * D4 — mesaj proactiv la deschiderea aplicației, O SINGURĂ DATĂ pe sesiune.
+   * Decis de reguli (ce expiră), nu de LLM. Intră în istoric, ca un „da” ulterior să aibă context.
+   */
+  proactiveGreeting(sessionId: string): string | null {
+    if (this.greeted.has(sessionId)) return null;
+    this.greeted.add(sessionId);
+
+    const { store } = this.deps;
+    const name = store.getUser().name.split(" ")[0];
+    const items = getExpiringItems(store, 30);
+    const zile = (n: number) => (n === 1 ? "zi" : n >= 20 ? "de zile" : "zile");
+
+    let text: string | null = null;
+    const rca = items.find((i) => i.kind === "rca" && i.daysLeft <= 14);
+    const vignette = items.find((i) => i.kind === "vignette" && i.daysLeft <= 7);
+    const overdue = items.find((i) => i.kind === "bill" && i.daysLeft < 0);
+    if (rca) {
+      text = rca.daysLeft < 0 ? `Bună, ${name}! RCA-ul tău a expirat acum ${-rca.daysLeft} ${zile(-rca.daysLeft)}. Vrei să-l reînnoiesc?`
+        : rca.daysLeft === 0 ? `Bună, ${name}! RCA-ul tău expiră azi. Vrei să-l reînnoiesc?`
+        : `Bună, ${name}! RCA-ul tău expiră în ${rca.daysLeft} ${zile(rca.daysLeft)}. Vrei să-l reînnoiesc?`;
+    } else if (vignette) {
+      text = vignette.daysLeft < 0 ? `Bună, ${name}! Rovinieta ta a expirat. Vrei să-ți arăt ofertele?`
+        : `Bună, ${name}! Rovinieta ta expiră în ${vignette.daysLeft} ${zile(vignette.daysLeft)}. Vrei să-ți arăt ofertele?`;
+    } else if (overdue) {
+      const bill = store.listBills().find((b) => b.id === overdue.refId)!;
+      text = `Bună, ${name}! Ai o factură întârziată la ${CATEGORY_RO[bill.category]}. Vrei s-o plătesc?`;
+    }
+    if (!text) return null;
+
+    const history = this.sessions.get(sessionId) ?? [];
+    history.push({ role: "user", content: [{ type: "text", text: `<${EVENT_TAG}>${JSON.stringify({ kind: "app_opened" })}</${EVENT_TAG}>` }] });
+    history.push({ role: "assistant", content: [{ type: "text", text }] });
+    this.sessions.set(sessionId, history);
+    return text;
   }
 
   async chat(sessionId: string, text: string): Promise<ChatResult> {
