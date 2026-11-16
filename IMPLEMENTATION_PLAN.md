@@ -270,9 +270,9 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
 
 ### Pas 2 — Stratul de confirmare plăți
 **Ce învățăm:** de ce regulile de siguranță stau în cod, nu în prompt; ce e un token cu expirare.
-- [ ] `prepare_payment` / `confirm_payment` / `cancel_payment`, plata în așteptare per sesiune.
-- [ ] Recunoașterea deterministă a lui „da”/„nu” (listă fixă de expresii, testată), aplicată înainte de LLM — vezi secțiunea 8.
-- [ ] Reguli: token valabil o singură dată, expiră, suma trebuie să coincidă; decidem pragul pentru confirmare suplimentară pe ecran.
+- [x] `prepare_payment` / `confirm_payment` / `cancel_payment`, plata în așteptare per sesiune.
+- [x] Recunoașterea deterministă a lui „da”/„nu” (listă fixă de expresii, testată), aplicată înainte de LLM — vezi secțiunea 8.
+- [x] Reguli: token valabil o singură dată, expiră, suma trebuie să coincidă; pragul pentru confirmare pe ecran = **500 lei** (peste 500, doar butonul confirmă).
 
 **Gata când:** teste pentru token reutilizat, expirat, inexistent, sumă modificată, plată dublă; teste pentru „da”, „nu”, „poate”, „da, arată-mi ofertele” (ultimele două nu confirmă); răspunsul lui `prepare_payment` către LLM nu conține token-ul.
 
@@ -397,7 +397,7 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
 - [ ] Există cheie API Anthropic? (necesară la Pasul 3; altfel model simulat)
 - [x] Ce telefon se folosește la demo (Android/iPhone)? → Android 10, Chrome (testat: STT + TTS română merg).
 - [ ] Prețurile și datele Mariei din secțiunea 6 sunt ok sau le schimbăm?
-- [ ] Pragul pentru confirmare suplimentară pe ecran (ex. 500 lei) — se decide la Pasul 2.
+- [x] Pragul pentru confirmare suplimentară pe ecran (ex. 500 lei) — se decide la Pasul 2. → **500 lei**: peste această sumă, doar butonul de pe ecran confirmă.
 - [ ] Cartea Verde din România acoperă Turcia? Ce trebuie concret pe ruta România → Bulgaria → Turcia (vinietă BG, taxe HGS în Turcia)? — de verificat din surse oficiale înainte de Pasul 4.
 
 ---
@@ -433,3 +433,9 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
   - Endpoint-uri: `GET /api/me, /bills?status, /vehicles, /policies, /vignettes, /services, /products?type, /payments`, `POST /api/dev/reset {variant}`. **Nicio rută nu plătește direct** — plățile vin la Pasul 2, cu token.
   - 32 de teste trec; build OK.
 - **Următorul pas:** Pas 2 (stratul de confirmare plăți). De decis: pragul pentru confirmare pe ecran.
+- **2026-11-16 — Pas 2 gata:**
+  - `apps/server/src/payments/intent.ts`: „da”/„nu” recunoscute determinist (listă fixă, pe toată fraza, fără diacritice). „poate”, „hmm”, „da, arată-mi ofertele” → nu confirmă.
+  - `apps/server/src/payments/confirmation.ts` (`PaymentConfirmation`): singurul loc care apelează `executePayment`. O plată în așteptare per sesiune; token unic, expiră în 5 min, legat de sesiune + sume; sumă schimbată → `AMOUNT_CHANGED`; peste 500 lei vocea nu confirmă (`SCREEN_CONFIRM_REQUIRED`). `getPendingSummary` (pentru LLM) nu conține token-ul. `handleUserMessage` rulează înainte de LLM.
+  - Rute: `POST /api/payments/prepare`, `GET /api/payments/pending`, `POST /api/payments/confirm` (buton), `POST /api/payments/cancel`.
+  - 78 de teste trec; build OK; flux verificat și pe serverul pornit.
+- **Următorul pas:** Pas 3 (agentul LLM + tool calling, în text). Încă deschis: cheia API Anthropic (altfel model simulat).

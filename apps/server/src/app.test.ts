@@ -82,6 +82,41 @@ describe("API Pago simulat", () => {
     expect(res.statusCode).toBe(404);
   });
 
+  it("flux HTTP: prepare → pending → confirm (cu buton)", async () => {
+    const { app, get } = setup();
+    const post = (url: string, payload: Record<string, unknown>) => app.inject({ method: "POST", url, payload });
+
+    const prep = await post("/api/payments/prepare", { sessionId: "s1", items: [{ kind: "bill", billId: "b-curent" }] });
+    expect(prep.statusCode).toBe(200);
+    const { token, total } = prep.json();
+    expect(total).toBe(187.4);
+
+    expect((await get("/api/payments/pending?sessionId=s1")).body.pending.token).toBe(token);
+
+    const ok = await post("/api/payments/confirm", { sessionId: "s1", token });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().payment.total).toBe(187.4);
+
+    const again = await post("/api/payments/confirm", { sessionId: "s1", token });
+    expect(again.statusCode).toBe(409);
+    expect(again.json().error).toBe("TOKEN_USED");
+  });
+
+  it("flux HTTP: cancel, token greșit, cerere incompletă", async () => {
+    const { app } = setup();
+    const post = (url: string, payload: Record<string, unknown>) => app.inject({ method: "POST", url, payload });
+
+    const { token } = (await post("/api/payments/prepare", { sessionId: "s1", items: [{ kind: "bill", billId: "b-apa" }] })).json();
+    expect((await post("/api/payments/confirm", { sessionId: "s1", token: "gresit" })).statusCode).toBe(404);
+    expect((await post("/api/payments/cancel", { sessionId: "s1", token })).json().cancelled).toBe(true);
+    expect((await post("/api/payments/confirm", { sessionId: "s1", token })).statusCode).toBe(409);
+    expect((await post("/api/payments/confirm", { sessionId: "s1" })).statusCode).toBe(400);
+
+    const paid = await post("/api/payments/prepare", { sessionId: "s1", items: [{ kind: "bill", billId: "b-internet" }] });
+    expect(paid.statusCode).toBe(409);
+    expect(paid.json().error).toBe("BILL_ALREADY_PAID");
+  });
+
   it("POST /api/dev/reset schimbă varianta", async () => {
     const { app, get } = setup();
     const res = await app.inject({ method: "POST", url: "/api/dev/reset", payload: { variant: "no-bills" } });

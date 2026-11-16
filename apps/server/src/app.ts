@@ -1,6 +1,16 @@
 import Fastify from "fastify";
-import type { BillStatus, ProductType, SeedVariant } from "@pago/shared";
+import type { BillStatus, PaymentRequestItem, ProductType, SeedVariant } from "@pago/shared";
 import { PagoError, PagoStore } from "./mock/store.ts";
+import { ConfirmError, PaymentConfirmation } from "./payments/confirmation.ts";
+
+const CONFIRM_STATUS: Record<string, number> = {
+  NO_PENDING_PAYMENT: 404,
+  TOKEN_INVALID: 404,
+  TOKEN_USED: 409,
+  TOKEN_EXPIRED: 410,
+  AMOUNT_CHANGED: 409,
+  SCREEN_CONFIRM_REQUIRED: 403,
+};
 
 const BILL_STATUSES: BillStatus[] = ["unpaid", "paid", "overdue"];
 const PRODUCT_TYPES: ProductType[] = ["rca", "vignette", "roaming", "sim"];
@@ -8,6 +18,7 @@ const VARIANTS: SeedVariant[] = ["demo", "all-good", "rca-expired", "no-bills"];
 
 export interface AppOptions {
   store?: PagoStore;
+  confirmation?: PaymentConfirmation;
 }
 
 /**
@@ -17,9 +28,13 @@ export interface AppOptions {
 export function buildApp(options: AppOptions = {}) {
   const app = Fastify({ logger: false });
   const store = options.store ?? new PagoStore();
+  const confirmation = options.confirmation ?? new PaymentConfirmation(store);
 
   // Erorile de business devin 4xx cu un cod clar; restul rămân 500.
   app.setErrorHandler((err, _req, reply) => {
+    if (err instanceof ConfirmError) {
+      return reply.status(CONFIRM_STATUS[err.code] ?? 409).send({ error: err.code, message: err.message });
+    }
     if (err instanceof PagoError) {
       const status = err.code.endsWith("NOT_FOUND") ? 404 : 409;
       return reply.status(status).send({ error: err.code, message: err.message });
@@ -68,7 +83,34 @@ export function buildApp(options: AppOptions = {}) {
 
   app.get("/api/payments", async () => store.listPayments());
 
-  // Plățile (prepare / confirm / cancel) se adaugă la Pasul 2, împreună cu token-ul de confirmare.
+  // ---------- Plăți: DOAR prin stratul de confirmare ----------
+  // prepare nu mută bani; confirm cere token-ul pe care îl are doar frontend-ul.
+
+  const badRequest = (reply: { status: (n: number) => { send: (b: unknown) => unknown } }, message: string) =>
+    reply.status(400).send({ error: "BAD_REQUEST", message });
+
+  app.post<{ Body: { sessionId?: string; items?: PaymentRequestItem[] } }>("/api/payments/prepare", async (req, reply) => {
+    const { sessionId, items } = req.body ?? {};
+    if (!sessionId || !Array.isArray(items)) return badRequest(reply, "Lipsește sessionId sau items.");
+    return confirmation.prepare(sessionId, items);
+  });
+
+  app.get<{ Querystring: { sessionId?: string } }>("/api/payments/pending", async (req, reply) => {
+    if (!req.query.sessionId) return badRequest(reply, "Lipsește sessionId.");
+    return { pending: confirmation.getPendingForClient(req.query.sessionId) };
+  });
+
+  app.post<{ Body: { sessionId?: string; token?: string } }>("/api/payments/confirm", async (req, reply) => {
+    const { sessionId, token } = req.body ?? {};
+    if (!sessionId || !token) return badRequest(reply, "Lipsește sessionId sau token.");
+    return { payment: confirmation.confirm(sessionId, token, "button") };
+  });
+
+  app.post<{ Body: { sessionId?: string; token?: string } }>("/api/payments/cancel", async (req, reply) => {
+    const { sessionId, token } = req.body ?? {};
+    if (!sessionId) return badRequest(reply, "Lipsește sessionId.");
+    return { cancelled: confirmation.cancel(sessionId, token) };
+  });
 
   // ---------- Doar pentru demo și teste: repornește povestea ----------
 
@@ -78,6 +120,7 @@ export function buildApp(options: AppOptions = {}) {
       return reply.status(400).send({ error: "BAD_VARIANT", message: `variant trebuie să fie: ${VARIANTS.join(", ")}` });
     }
     store.reset(variant);
+    confirmation.clearAll();
     return { ok: true, variant };
   });
 

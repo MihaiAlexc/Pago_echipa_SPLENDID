@@ -96,6 +96,20 @@ export interface Payment {
   createdAt: string; // ISO cu oră
 }
 
+/** Sumarul unei plăți în așteptare. Ăsta e tot ce vede LLM-ul (fără token). */
+export interface PendingPaymentSummary {
+  lines: PaymentLine[];
+  total: number;
+  /** true = peste prag: se confirmă DOAR cu butonul de pe ecran, nu vocal. */
+  requiresScreenConfirm: boolean;
+  expiresAt: string; // ISO cu oră
+}
+
+/** Ce primește frontend-ul: sumarul + token-ul pentru butonul Confirmă. */
+export interface PendingPaymentForClient extends PendingPaymentSummary {
+  token: string;
+}
+
 /** Toate datele unui utilizator din mock. */
 export interface PagoData {
   user: User;
