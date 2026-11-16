@@ -44,6 +44,8 @@ export function App() {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [tab, setTab] = useState<"bills" | "car">("bills");
   const endRef = useRef<HTMLDivElement>(null);
+  const listeningRef = useRef(false);
+  const [awaitingAnswer, setAwaitingAnswer] = useState(false); // microfonul ascultă „da” / „nu”
   const voiceOnRef = useRef(voiceOn);
   voiceOnRef.current = voiceOn;
 
@@ -144,6 +146,9 @@ export function App() {
       setVoiceState("idle");
       loadData();
       await botSays(r.reply, viaVoice);
+      // Dacă vorbim și asistentul așteaptă „da” / „nu” pentru o plată, pornim singuri microfonul
+      // pentru UN răspuns; după ce l-ai spus, se oprește (pornește din nou doar dacă urmează altă confirmare).
+      if (viaVoice && r.pending && stt.supported) await listen(true);
     } catch {
       setBusy(false);
       setVoiceState("idle");
@@ -151,23 +156,31 @@ export function App() {
     }
   }
 
-  async function listen() {
+  /** `forAnswer` = pornit automat ca să asculte răspunsul la „O plătesc?”. */
+  async function listen(forAnswer = false) {
     setVoiceError(null);
-    if (voiceState === "listening") {
-      stt.stop();
+    if (!forAnswer && listeningRef.current) {
+      stt.stop(); // al doilea apăsat = oprește
       return;
     }
     stopSpeaking();
     setVoiceOn(true); // dacă vorbești, îți și răspundem cu voce
+    listeningRef.current = true;
+    setAwaitingAnswer(forAnswer);
     setVoiceState("listening");
     try {
       const heard = await stt.listen((partial) => setInput(partial));
+      listeningRef.current = false;
+      setAwaitingAnswer(false);
       setVoiceState("idle");
       if (heard) await send(heard, true);
       else setInput("");
     } catch (e) {
+      listeningRef.current = false;
+      setAwaitingAnswer(false);
       setVoiceState("idle");
-      setVoiceError((e as Error).message);
+      // Tăcere la întrebarea de confirmare: nu e o eroare, cardul rămâne pe ecran.
+      if (!(forAnswer && (e as { code?: string }).code === "no-speech")) setVoiceError((e as Error).message);
     }
   }
 
@@ -184,6 +197,7 @@ export function App() {
 
   async function confirm() {
     if (!pending || busy) return;
+    if (listeningRef.current) stt.stop(); // ai răspuns cu butonul → microfonul nu mai e nevoie
     setBusy(true);
     let text: string;
     try {
@@ -200,8 +214,11 @@ export function App() {
 
   async function cancel() {
     if (!pending || busy) return;
+    if (listeningRef.current) stt.stop();
+    setBusy(true);
     await post("/api/payments/cancel", { sessionId, token: pending.token }).catch(() => {});
     setPending(null);
+    setBusy(false);
     await botSays("Bine, nu am plătit nimic.");
   }
 
@@ -215,7 +232,8 @@ export function App() {
   }
 
   const micLabel =
-    voiceState === "listening" ? "Ascult… (apasă ca să oprești)"
+    voiceState === "listening" && awaitingAnswer ? "Te ascult: spune „da” sau „nu”"
+    : voiceState === "listening" ? "Ascult… (apasă ca să oprești)"
     : voiceState === "thinking" ? "Mă gândesc…"
     : voiceState === "speaking" ? "Vorbesc… (apasă ca să vorbești tu)"
     : "Apasă și vorbește";
@@ -327,7 +345,7 @@ export function App() {
           <div className="voice">
             <button
               className={`mic ${voiceState}`}
-              onClick={listen}
+              onClick={() => listen()}
               disabled={busy || !stt.supported}
               aria-label={micLabel}
             >
