@@ -262,9 +262,9 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
 
 ### Pas 1 — Pachet comun și date mock
 **Ce învățăm:** ce sunt tipurile TypeScript și de ce le partajăm între server și frontend; ce e un API simulat.
-- [ ] Tipurile din `packages/shared` (secțiunea 6).
-- [ ] Date seed pentru povestea Mariei + variantele de seed.
-- [ ] Mock Pago: endpoint-urile din secțiunea 6.
+- [x] Tipurile din `packages/shared` (secțiunea 6).
+- [x] Date seed pentru povestea Mariei + variantele de seed.
+- [x] Mock Pago: endpoint-urile de citire din secțiunea 6 (cele de plată vin la Pasul 2, împreună cu token-ul).
 
 **Gata când:** teste unitare pe fiecare endpoint (citire, plată reușită, plată a unei facturi deja plătite → eroare); povestea Mariei se vede corect în răspunsuri.
 
@@ -426,3 +426,10 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
     - Pagina de test arată acum explicații clare pentru erori și nu mai pornește ascultarea de două ori.
   - **Test voce, a doua încercare (microfon permis):** ✅ STT înțelege în română atât cuvintele, cât și cifrele. Vocea e confirmată pe Chrome Android → Pasul 0 **gata**.
 - **Următorul pas:** Pas 1 (tipuri comune, date seed, mock Pago).
+- **2026-11-16 — Pas 1 gata:**
+  - `packages/shared`: tipurile (User, Vehicle, Bill, InsurancePolicy, Vignette, TravelService, Product, Payment, PagoData) + ajutoare pentru date (`addDays`, `daysBetween`).
+  - `apps/server/src/mock/seed.ts`: povestea Mariei + variantele `all-good`, `rca-expired`, `no-bills`; datele sunt relative la „azi”. Catalogul are prețurile din D3/D4. Furnizorii au nume fictive.
+  - `apps/server/src/mock/store.ts`: citire + `executePayment` intern (sumele din date, totul-sau-nimic, factură deja plătită → eroare). Cumpărarea unui produs adaugă poliță / vinietă / roaming.
+  - Endpoint-uri: `GET /api/me, /bills?status, /vehicles, /policies, /vignettes, /services, /products?type, /payments`, `POST /api/dev/reset {variant}`. **Nicio rută nu plătește direct** — plățile vin la Pasul 2, cu token.
+  - 32 de teste trec; build OK.
+- **Următorul pas:** Pas 2 (stratul de confirmare plăți). De decis: pragul pentru confirmare pe ecran.
