@@ -419,4 +419,9 @@ Fiecare pas are: **ce învățăți**, **livrabil**, **Gata când** (checklist) 
   - Pagina de test de voce: `http://localhost:5173/voice-test.html`. Pe PC-ul de dezvoltare (Windows) nu există voce TTS română → trebuie verificat pe telefon.
   - Instalate Git și `cloudflared` (winget). Repo inițializat pe `main`, primele commit-uri făcute.
   - Tunel HTTPS: `npm run dev` + `npm run tunnel` → URL `https://<ceva>.trycloudflare.com` (se schimbă la fiecare pornire). Verificat: pagina și `/api` merg prin tunel.
-  - **Rămâne:** testul de voce pe telefon (Chrome Android) → rezultatul se notează aici.
+  - **Test voce pe telefon (Android 10, Chrome 157), prima încercare:**
+    - HTTPS, STT și TTS suportate. ✅ Există voce TTS română („română România”).
+    - STT: `not-allowed` → microfonul era blocat pentru site; apoi `aborted` (apăsări repetate). Încă nu știm cât de bine recunoaște româna.
+    - TTS `interrupted` = vorbirea oprită de noi, nu e o problemă.
+    - Pagina de test arată acum explicații clare pentru erori și nu mai pornește ascultarea de două ori.
+  - **Rămâne:** repetat STT pe telefon după ce se permite microfonul (cifre, „da/nu”).

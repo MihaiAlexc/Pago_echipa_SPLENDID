@@ -73,7 +73,17 @@
   const sttStatus = document.getElementById("sttStatus");
   const listenBtn = document.getElementById("listen");
   if (!SR) { listenBtn.disabled = true; sttStatus.textContent = "Browserul nu suportă recunoașterea vocală."; }
+  const sttErrors = {
+    "not-allowed": "Microfonul e blocat. În Chrome: apasă iconița din stânga adresei → Permisiuni → Microfon → Permite. Verifică și Setări Android → Aplicații → Chrome → Permisiuni → Microfon.",
+    "no-speech": "Nu am auzit nimic. Mai încearcă.",
+    "audio-capture": "Nu găsesc microfonul.",
+    "network": "Recunoașterea vocală are nevoie de internet.",
+    "aborted": "Ascultarea a fost oprită.",
+  };
+  let listening = false;
   listenBtn.onclick = () => {
+    if (listening) return; // o singură ascultare odată (altfel apare "aborted")
+    listening = true;
     const rec = new SR();
     rec.lang = "ro-RO";
     rec.interimResults = true;
@@ -87,8 +97,8 @@
         note(`STT: ${alts}`);
       }
     };
-    rec.onerror = (e) => { sttStatus.textContent = `Eroare: ${e.error}`; note(`STT eroare: ${e.error}`); };
-    rec.onend = () => { listenBtn.textContent = "🎤 Ascultă"; if (sttStatus.textContent === "Ascult…") sttStatus.textContent = ""; };
+    rec.onerror = (e) => { sttStatus.textContent = sttErrors[e.error] || `Eroare: ${e.error}`; note(`STT eroare: ${e.error}`); };
+    rec.onend = () => { listening = false; listenBtn.textContent = "🎤 Ascultă"; if (sttStatus.textContent === "Ascult…") sttStatus.textContent = ""; };
     rec.start();
   };
 
@@ -108,7 +118,8 @@
     u.lang = "ro-RO";
     const v = voices.find((x) => x.name === voiceSel.value);
     if (v) u.voice = v;
-    u.onerror = (e) => note(`TTS eroare: ${e.error}`);
+    // "interrupted"/"canceled" = am oprit noi vorbirea (buton Oprește sau Vorbește din nou) → nu e eroare.
+    u.onerror = (e) => { if (e.error !== "interrupted" && e.error !== "canceled") note(`TTS eroare: ${e.error}`); };
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   };
