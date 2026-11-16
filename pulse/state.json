@@ -1,0 +1,29 @@
+{
+  "team": "SPLENDID",
+  "ticks": [
+    {
+      "n": 1,
+      "member": 2,
+      "time": "2026-11-16 13:33",
+      "headline": "Proiectul pornește: web + server merg, iar telefonul vorbește românește"
+    }
+  ],
+  "members": {
+    "2": {
+      "building": "Un asistent vocal în română pentru Pago: plătești facturi, RCA, rovinietă și roaming doar vorbind, gândit pentru oamenii cărora le e greu să folosească ecranul. Ca un prieten răbdător care face plățile în locul tău, dar te întreabă mereu înainte.",
+      "works": "Proiectul pornește cu o singură comandă (interfață web + server), testele și build-ul trec, pagina de test de voce se deschide pe telefon printr-un tunel HTTPS, iar telefonul are voce românească pentru citit răspunsurile. Codul e pe GitHub, unit cu istoricul echipei.",
+      "blocking": "Recunoașterea vocii pe telefon nu a fost încă testată, pentru că microfonul era blocat pentru site. Regulile reale pentru călătoria în Turcia (Carte Verde, vinieta pentru Bulgaria) trebuie verificate din surse oficiale.",
+      "features": [
+        { "name": "Citire și analiză de documente", "for": "am analizat planul de implementare și am găsit o contradicție la confirmarea plăților și date care nu se potriveau" },
+        { "name": "Editare de fișiere", "for": "am corectat planul: confirmarea plății se face doar în backend, dialogurile se potrivesc cu prețurile" },
+        { "name": "Comenzi în terminal", "for": "am instalat pachetele, Git și tunelul, am rulat testele și build-ul" },
+        { "name": "Browser integrat", "for": "am verificat aplicația și tunelul și am prins un bug de port" },
+        { "name": "Git cu Claude", "for": "commit-uri, repararea adresei remote și unirea cu istoricul echipei de pe GitHub" },
+        { "name": "Terminal vizibil", "for": "push-ul pe GitHub, cu logarea făcută de noi" },
+        { "name": "Subagent", "for": "generează această pagină de progres" },
+        { "name": "Sarcini programate", "for": "actualizează pagina de progres la fiecare 2 ore" }
+      ],
+      "next": "Repetăm testul de voce pe telefon cu microfonul permis, apoi Pasul 1: tipurile comune, datele utilizatorului de test și API-ul Pago simulat."
+    }
+  }
+}

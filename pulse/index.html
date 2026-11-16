@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPLENDID · Pulse</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --ground:#EFF2F7;--surface:#FFFFFF;--surface-2:#F7F8FB;--ink:#161F28;--muted:#5A6B8F;--line:#DFE6F6;--accent:#2B59C3;--accent-soft:#E6F0FF;
+  --shadow:0 0 1.4px rgba(24,24,27,.3),0 5.6px 11.2px rgba(24,24,27,.1);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E131A;--surface:#171D26;--surface-2:#1D2430;--ink:#E6EAF2;--muted:#94A3BD;--line:#2A3240;--accent:#7FA2F5;--accent-soft:#1A2747;
+    --shadow:0 4px 12px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E131A;--surface:#171D26;--surface-2:#1D2430;--ink:#E6EAF2;--muted:#94A3BD;--line:#2A3240;--accent:#7FA2F5;--accent-soft:#1A2747;
+  --shadow:0 4px 12px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:'Poppins',system-ui,sans-serif;font-size:15px;line-height:1.6;overflow-wrap:anywhere}
+h1{font-weight:800;font-size:clamp(30px,5.2vw,46px);line-height:1.1;margin:0}
+h2{font-weight:700;font-size:1.35rem;margin:0 0 14px}
+h3{font-weight:600;font-size:1rem;margin:0}
+p{margin:0}
+svg{max-width:100%;height:auto;display:block}
+.page{max-width:880px;margin:0 auto;padding:20px 16px 32px;display:flex;flex-direction:column;gap:28px}
+.masthead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.wordmark{font-weight:800;font-size:1.6rem;color:var(--accent);text-transform:lowercase;letter-spacing:-.5px;line-height:1}
+.sep{width:1px;height:22px;background:var(--line)}
+.mast-sub{font-size:.8rem;color:var(--muted)}
+.poster{position:relative;overflow:hidden;color:#fff;background:linear-gradient(160deg,#2A56D4,#1E43B8);border-radius:28px;padding:28px;display:flex;flex-wrap:wrap;gap:24px;align-items:center}
+.poster::after{content:"";position:absolute;right:-90px;bottom:-90px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(255,213,74,.55),rgba(255,213,74,0) 70%);pointer-events:none}
+.poster>*{position:relative;z-index:1}
+.poster .txt{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.poster h1{color:#FFD54A}
+.poster .sub{font-weight:700;color:#fff;font-size:1.05rem}
+.poster .analogy{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.38);border-radius:18px;padding:12px 14px;font-size:.92rem}
+.poster .frame{flex:0 1 190px;margin:0 auto;border:2px solid rgba(255,255,255,.38);background:rgba(255,255,255,.14);border-radius:34px;padding:10px;width:190px;max-width:100%}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px;max-width:100%;min-width:0}
+.pill{display:inline-block;border-radius:999px;padding:2px 12px;font-size:.75rem;font-weight:700;line-height:1.6;white-space:nowrap}
+.m1{background:var(--accent);color:#fff}
+.m2{background:#FFD54A;color:#161F28}
+.here{background:#FFD54A;color:#161F28}
+.ico{width:48px;height:48px;flex:0 0 48px;border-radius:14px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.ico svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.trail{display:flex;flex-direction:column;gap:0;position:relative}
+.stop{display:flex;gap:14px}
+.rail{display:flex;flex-direction:column;align-items:center;flex:0 0 30px}
+.dot{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;display:flex;align-items:center;justify-content:center;border:3px solid var(--accent-soft)}
+.line{flex:1;width:2px;background:var(--line);min-height:8px}
+.stop .card{flex:1;display:flex;flex-direction:column;gap:8px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.78rem;color:var(--muted)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.tile{display:flex;flex-direction:column;gap:10px}
+.tile .head{display:flex;align-items:center;gap:12px}
+.tile .who{display:flex;flex-direction:column;gap:6px;align-items:flex-start;font-size:.88rem}
+.who-row{display:flex;gap:8px;align-items:flex-start}
+.next{display:flex;flex-direction:column;gap:12px}
+.next .card{display:flex;gap:12px;align-items:flex-start}
+footer{border-top:1px solid var(--line);padding-top:14px;font-size:.8rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="masthead">
+  <span class="wordmark">pago</span>
+  <span class="sep"></span>
+  <span class="mast-sub">AI Hackathon · SPLENDID</span>
+</header>
+
+<section class="poster" aria-label="Ce construim">
+  <div class="txt">
+    <h1>Plătești vorbind</h1>
+    <p class="sub">Un asistent vocal în română pentru Pago: facturi, RCA, rovinietă, roaming.</p>
+    <p class="analogy">Ca un prieten răbdător care face plățile în locul tău, dar te întreabă mereu înainte.</p>
+  </div>
+  <div class="frame">
+    <svg viewBox="0 0 170 260" role="img" aria-label="Telefon care ascultă o voce și confirmă o plată" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="20" y="8" width="130" height="244" rx="26"/>
+      <line x1="72" y1="22" x2="98" y2="22"/>
+      <rect x="70" y="60" width="30" height="48" rx="15" stroke="#FFD54A"/>
+      <path d="M58 98a27 27 0 0 0 54 0" stroke="#FFD54A"/>
+      <line x1="85" y1="125" x2="85" y2="140" stroke="#FFD54A"/>
+      <path d="M40 84q-10 12 0 24M130 84q10 12 0 24"/>
+      <path d="M30 70q-18 26 0 52M140 70q18 26 0 52"/>
+      <rect x="40" y="165" width="90" height="34" rx="12"/>
+      <path d="M56 182l8 8 14-16" stroke="#FFD54A"/>
+      <line x1="90" y1="182" x2="118" y2="182"/>
+      <line x1="60" y1="225" x2="110" y2="225"/>
+    </svg>
+  </div>
+</section>
+
+<section aria-label="Problemă, idee, demo">
+  <h2>Problemă → Idee → Demo</h2>
+  <div class="card">
+    <svg viewBox="0 0 720 220" role="img" aria-label="Problemă: ecranul e greu. Idee: vorbești. Demo: plata e făcută." fill="none" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" font-family="Poppins,system-ui,sans-serif">
+      <!-- problem -->
+      <rect x="40" y="30" width="140" height="120" rx="16" stroke="var(--muted)"/>
+      <line x1="60" y1="60" x2="160" y2="60" stroke="var(--muted)"/>
+      <line x1="60" y1="82" x2="140" y2="82" stroke="var(--muted)"/>
+      <line x1="60" y1="104" x2="150" y2="104" stroke="var(--muted)"/>
+      <circle cx="110" cy="128" r="9" stroke="var(--accent)"/>
+      <path d="M106 126h.01M114 126h.01M105 132q5-4 10 0" stroke="var(--accent)"/>
+      <path d="M190 90l6 6M190 102l6-6" stroke="var(--accent)"/>
+      <text x="110" y="185" text-anchor="middle" fill="var(--ink)" stroke="none" font-weight="700" font-size="17">Ecranul e greu</text>
+      <!-- arrow 1 -->
+      <path d="M215 90h50m-10-10l10 10-10 10" stroke="var(--accent)"/>
+      <!-- idea -->
+      <rect x="320" y="45" width="40" height="66" rx="20" stroke="var(--accent)"/>
+      <path d="M305 100a35 35 0 0 0 70 0M340 135v18" stroke="var(--accent)"/>
+      <path d="M385 70q12 18 0 36M400 56q20 32 0 64" stroke="var(--accent)"/>
+      <text x="340" y="185" text-anchor="middle" fill="var(--ink)" stroke="none" font-weight="700" font-size="17">Doar vorbești</text>
+      <!-- arrow 2 -->
+      <path d="M430 90h50m-10-10l10 10-10 10" stroke="var(--accent)"/>
+      <!-- demo -->
+      <rect x="540" y="25" width="100" height="130" rx="18"/>
+      <circle cx="590" cy="75" r="22" stroke="var(--accent)"/>
+      <path d="M580 76l7 7 14-15" stroke="var(--accent)"/>
+      <line x1="565" y1="120" x2="615" y2="120" stroke="var(--muted)"/>
+      <line x1="572" y1="135" x2="608" y2="135" stroke="var(--muted)"/>
+      <text x="590" y="185" text-anchor="middle" fill="var(--ink)" stroke="none" font-weight="700" font-size="17">Plata e făcută</text>
+    </svg>
+  </div>
+</section>
+
+<section aria-label="Drumul nostru">
+  <h2>Drumul nostru</h2>
+  <div class="trail">
+    <div class="stop">
+      <div class="rail"><div class="dot">1</div></div>
+      <div class="card">
+        <div class="meta"><span class="pill m2">M2</span><span class="pill here">Ești aici</span><span>2026-11-16 13:33</span></div>
+        <h3>Proiectul pornește: web + server merg, iar telefonul vorbește românește</h3>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section aria-label="Cum folosim Claude">
+  <h2>Cum folosim Claude</h2>
+  <div class="tiles">
+    <div class="card tile">
+      <div class="head"><div class="ico"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg></div><h3>Citire și analiză de documente</h3></div>
+      <div class="who-row"><span class="pill m2">M2</span><span>am analizat planul de implementare și am găsit o contradicție la confirmarea plăților și date care nu se potriveau</span></div>
+    </div>
+    <div class="card tile">
+      <div class="head"><div class="ico"><svg viewBox="0 0 24 24"><path d="M4 20l1-5L16 4l4 4L9 19z"/><path d="M14 6l4 4"/></svg></div><h3>Editare de fișiere</h3></div>
+      <div class="who-row"><span class="pill m2">M2</span><span>am corectat planul: confirmarea plății se face doar în backend, dialogurile se potrivesc cu prețurile</span></div>
+    </div>
+    <div class="card tile">
+      <div class="head"><div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 10l3 2-3 2M12 15h5"/></svg></div><h3>Comenzi în terminal</h3></div>
+      <div class="who-row"><span class="pill m2">M2</span><span>am instalat pachetele, Git și tunelul, am rulat testele și build-ul</span></div>
+    </div>
+    <div class="card tile">
+      <div class="head"><div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M6 6.5h.01M9 6.5h.01"/></svg></div><h3>Browser integrat</h3></div>
+      <div class="who-row"><span class="pill m2">M2</span><span>am verificat aplicația și tunelul și am prins un bug de port</span></div>
+    </div>
+    <div class="card tile">
+      <div class="head"><div class="ico"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="9" r="2.5"/><path d="M6 8.5v7M18 11.5c0 4-6 3-11 5"/></svg></div><h3>Git cu Claude</h3></div>
+      <div class="who-row"><span class="pill m2">M2</span><span>commit-uri, repararea adresei remote și unirea cu istoricul echipei de pe GitHub</span></div>
+    </div>
+    <div class="card tile">
+      <div class="head"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></div><h3>Terminal vizibil</h3></div>
+      <div class="who-row"><span class="pill m2">M2</span><span>push-ul pe GitHub, cu logarea făcută de noi</span></div>
+    </div>
+    <div class="card tile">
+      <div class="head"><div class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M9.5 16.5h5"/><circle cx="12" cy="3.5" r="1"/></svg></div><h3>Subagent</h3></div>
+      <div class="who-row"><span class="pill m2">M2</span><span>generează această pagină de progres</span></div>
+    </div>
+    <div class="card tile">
+      <div class="head"><div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3>Sarcini programate</h3></div>
+      <div class="who-row"><span class="pill m2">M2</span><span>actualizează pagina de progres la fiecare 2 ore</span></div>
+    </div>
+  </div>
+</section>
+
+<section aria-label="Pasul următor">
+  <h2>Pasul următor</h2>
+  <div class="next">
+    <div class="card">
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+      <div class="who-row"><span class="pill m2">M2</span><span>Repetăm testul de voce pe telefon cu microfonul permis, apoi Pasul 1: tipurile comune, datele utilizatorului de test și API-ul Pago simulat.</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>Făcut la Pago</footer>
+
+</div>
+<script type="application/json" id="pulse-data">{
+  "team": "SPLENDID",
+  "ticks": [
+    {
+      "n": 1,
+      "member": 2,
+      "time": "2026-11-16 13:33",
+      "headline": "Proiectul pornește: web + server merg, iar telefonul vorbește românește"
+    }
+  ],
+  "members": {
+    "2": {
+      "building": "Un asistent vocal în română pentru Pago: plătești facturi, RCA, rovinietă și roaming doar vorbind, gândit pentru oamenii cărora le e greu să folosească ecranul. Ca un prieten răbdător care face plățile în locul tău, dar te întreabă mereu înainte.",
+      "works": "Proiectul pornește cu o singură comandă (interfață web + server), testele și build-ul trec, pagina de test de voce se deschide pe telefon printr-un tunel HTTPS, iar telefonul are voce românească pentru citit răspunsurile. Codul e pe GitHub, unit cu istoricul echipei.",
+      "blocking": "Recunoașterea vocii pe telefon nu a fost încă testată, pentru că microfonul era blocat pentru site. Regulile reale pentru călătoria în Turcia (Carte Verde, vinieta pentru Bulgaria) trebuie verificate din surse oficiale.",
+      "features": [
+        { "name": "Citire și analiză de documente", "for": "am analizat planul de implementare și am găsit o contradicție la confirmarea plăților și date care nu se potriveau" },
+        { "name": "Editare de fișiere", "for": "am corectat planul: confirmarea plății se face doar în backend, dialogurile se potrivesc cu prețurile" },
+        { "name": "Comenzi în terminal", "for": "am instalat pachetele, Git și tunelul, am rulat testele și build-ul" },
+        { "name": "Browser integrat", "for": "am verificat aplicația și tunelul și am prins un bug de port" },
+        { "name": "Git cu Claude", "for": "commit-uri, repararea adresei remote și unirea cu istoricul echipei de pe GitHub" },
+        { "name": "Terminal vizibil", "for": "push-ul pe GitHub, cu logarea făcută de noi" },
+        { "name": "Subagent", "for": "generează această pagină de progres" },
+        { "name": "Sarcini programate", "for": "actualizează pagina de progres la fiecare 2 ore" }
+      ],
+      "next": "Repetăm testul de voce pe telefon cu microfonul permis, apoi Pasul 1: tipurile comune, datele utilizatorului de test și API-ul Pago simulat."
+    }
+  }
+}
+</script>
+</body>
+</html>
