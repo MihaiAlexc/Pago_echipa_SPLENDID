@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asistent Virtual Pago</title>
+  <style>
+    :root {
+      --pago-blue: #009fe3;
+      --pago-dark: #003b5c;
+      --pago-bg: #f3f7fa;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background: var(--pago-bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--pago-dark), var(--pago-blue));
+      color: white;
+      padding: 18px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0, 59, 92, 0.15);
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo span {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .voice-toggle {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .container {
+      max-width: 1180px;
+      width: 100%;
+      margin: 28px auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      gap: 24px;
+      flex: 1;
+    }
+
+    @media (max-width: 850px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
+      min-width: 0;
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      color: var(--pago-dark);
+      margin-bottom: 16px;
+    }
+
+    .bill-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .bill-info h3 {
+      font-size: 0.98rem;
+      margin-bottom: 3px;
+    }
+
+    .bill-info p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .bill-right {
+      text-align: right;
+    }
+
+    .bill-amount {
+      font-weight: 700;
+      font-size: 0.98rem;
+      margin-bottom: 6px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge.platita {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .badge.neplatita {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .pay-btn {
+      margin-top: 6px;
+      background: var(--pago-blue);
+      color: white;
+      border: none;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .chat-box {
+      display: flex;
+      flex-direction: column;
+      height: 590px;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg {
+      max-width: 85%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 0.94rem;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .msg.bot {
+      background: #eef6fb;
+      color: var(--pago-dark);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .msg.user {
+      background: var(--pago-blue);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    /* ----- animația „scrie...” cât timp așteaptă răspunsul ----- */
+    .msg.typing {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 14px 18px;
+    }
+
+    .msg.typing span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--pago-blue);
+      animation: salt 1.2s infinite ease-in-out;
+    }
+
+    .msg.typing span:nth-child(2) { animation-delay: 0.15s; }
+    .msg.typing span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes salt {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+      40%           { transform: translateY(-6px); opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .msg.typing span { animation: none; opacity: 0.7; }
+    }
+
+    /* ----- linkuri (afișate, dar necitite de voce) ----- */
+    .link-list {
+      align-self: flex-start;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: 85%;
+    }
+
+    .link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #ffffff;
+      border: 1px solid #bae6fd;
+      color: #0284c7;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+
+    .link-btn:hover {
+      background: #eef6fb;
+      text-decoration: underline;
+    }
+
+    .package-wrapper {
+      align-self: flex-start;
+      width: 94%;
+      background: #ffffff;
+      border: 1px solid #bae6fd;
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 4px 14px rgba(0, 159, 227, 0.08);
+    }
+
+    .package-header {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--pago-blue);
+      margin-bottom: 10px;
+    }
+
+    .package-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+    }
+
+    .action-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .action-card h4 {
+      font-size: 0.92rem;
+      color: var(--pago-dark);
+    }
+
+    .action-price {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #0284c7;
+    }
+
+    .action-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .anchor-btn {
+      width: 100%;
+      border: none;
+      background: var(--pago-blue);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    .anchor-btn:hover {
+      background: var(--pago-dark);
+    }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .chip {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: var(--pago-dark);
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .chip:hover {
+      background: #e2e8f0;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 10px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 14px;
+    }
+
+    input[type="text"],
+    select {
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .input-area input[type="text"] {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .btn-send,
+    .btn-mic {
+      border: none;
+      border-radius: 14px;
+      padding: 0 18px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    .btn-send {
+      background: var(--pago-dark);
+      color: white;
+    }
+
+    .btn-send:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .btn-mic {
+      background: var(--pago-blue);
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-mic.listening {
+      background: #ef4444;
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(3px);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: white;
+      width: 100%;
+      max-width: 440px;
+      border-radius: 22px;
+      padding: 26px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .modal-top h3 {
+      color: var(--pago-dark);
+      font-size: 1.15rem;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .price-box {
+      background: #eef6fb;
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 16px 0;
+    }
+
+    .price-box span {
+      font-size: 0.9rem;
+      color: var(--pago-dark);
+    }
+
+    .price-box strong {
+      font-size: 1.3rem;
+      color: var(--pago-blue);
+    }
+
+    .btn-issue {
+      width: 100%;
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 0.98rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-issue:hover {
+      background: #059669;
+    }
+
+    .official-link {
+      display: block;
+      text-align: center;
+      margin-top: 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .official-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">pago <span>Asistent AI</span> <span id="stareAI">verific...</span></div>
+    <button class="voice-toggle" id="toggleAudio" onclick="comutaSunet()">
+      🔊 Voce activă
+    </button>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Facturile tale Pago</h2>
+      <div id="listaFacturi">Se încarcă facturile...</div>
+    </div>
+
+    <div class="card chat-box">
+      <h2>Asistent Călătorii & Plăți</h2>
+      <div class="messages" id="chatMessages">
+        <div class="msg bot">
+          Salut! Întreabă-mă orice: despre Pago, despre facturile tale, despre o călătorie sau orice altceva vrei să afli.
+        </div>
+      </div>
+
+      <div class="suggestions">
+        <button class="chip" onclick="trimiteRapid('Vreau să plec în Japonia, de ce acte am nevoie?')">
+          ✈️ Pachet Japonia
+        </button>
+        <button class="chip" onclick="trimiteRapid('Plec în Turcia cu mașina, ce documente îmi trebuie?')">
+          🚗 Pachet Turcia (auto)
+        </button>
+        <button class="chip" onclick="trimiteRapid('Merg în Italia în vacanță, de ce am nevoie?')">
+          🇮🇹 Pachet Italia
+        </button>
+        <button class="chip" onclick="trimiteRapid('Cu ce se ocupă aplicația Pago?')">
+          ℹ️ Despre Pago
+        </button>
+      </div>
+
+      <div class="input-area">
+        <input
+          type="text"
+          id="userInput"
+          placeholder="Întreabă orice, de ex: Plec în Turcia cu mașina, de ce am nevoie?"
+          onkeypress="if(event.key === 'Enter') trimiteMesaj()"
+        />
+        <button class="btn-mic" id="micBtn" onclick="pornesteMicrofon()">
+          🎤 Vorbește
+        </button>
+        <button class="btn-send" id="sendBtn" onclick="trimiteMesaj()">Trimite</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="pagoModal">
+    <div class="modal-card">
+      <div class="modal-top">
+        <h3 id="modalTitle">Configurare serviciu Pago</h3>
+        <button class="close-modal" onclick="inchideModal()">×</button>
+      </div>
+
+      <div class="form-group">
+        <label for="titularInput">Nume titular / Asigurat</label>
+        <input type="text" id="titularInput" value="Popescu Andrei" />
+      </div>
+
+      <div class="form-group" id="durataGroup">
+        <label id="durataLabel" for="durataSelect">Durată / Valabilitate</label>
+        <select id="durataSelect" onchange="recalculeazaPret()">
+          <option value="1">7 zile (Standard)</option>
+          <option value="1.8">14 zile</option>
+          <option value="3.2">30 zile</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="persoaneGroup">
+        <label for="persoaneSelect">Număr persoane</label>
+        <select id="persoaneSelect" onchange="recalculeazaPret()">
+          <option value="1">1 persoană</option>
+          <option value="2">2 persoane</option>
+          <option value="3">3 persoane</option>
+          <option value="4">4 persoane</option>
+        </select>
+      </div>
+
+      <div class="price-box">
+        <span>Total estimat în Pago:</span>
+        <strong id="pretCalculat">45 lei</strong>
+      </div>
+
+      <button class="btn-issue" onclick="emiteServiciu()">
+        ✓ Emite instant în contul Pago
+      </button>
+
+      <a id="linkOficialPago" class="official-link" href="https://pago.ro" target="_blank" rel="noopener noreferrer">
+        Vezi pagina informativă pe pago.ro ↗
+      </a>
+    </div>
+  </div>
+
+  <audio id="playerUnic" preload="none"></audio>
+
+  <script>
+    let sunetActiv = true;
+    let coadaAudio = [];
+    let idRedareCurent = 0;
+    let cerereInCurs = false;
+    let pretBazaModal = 45;
+    let serviciuCurentModal = "";
+
+    function opresteTotSunetul() {
+      idRedareCurent++;
+      coadaAudio = [];
+      const player = document.getElementById("playerUnic");
+      if (player) {
+        player.onended = null;
+        player.onerror = null;
+        player.pause();
+        player.removeAttribute("src");
+        player.load();
+      }
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    function comutaSunet() {
+      sunetActiv = !sunetActiv;
+      const btn = document.getElementById("toggleAudio");
+      btn.textContent = sunetActiv ? "🔊 Voce activă" : "🔇 Voce oprită";
+      if (!sunetActiv) {
+        opresteTotSunetul();
+      }
+    }
+
+    function redaUrmatorulDinCoada(idSesiune) {
+      if (idSesiune !== idRedareCurent || !sunetActiv || coadaAudio.length === 0) {
+        return;
+      }
+
+      const player = document.getElementById("playerUnic");
+      const urmatorulB64 = coadaAudio.shift();
+
+      player.onended = null;
+      player.onerror = null;
+      player.src = "data:audio/mp3;base64," + urmatorulB64;
+
+      player.onended = function () {
+        if (idSesiune !== idRedareCurent) return;
+        setTimeout(function () {
+          redaUrmatorulDinCoada(idSesiune);
+        }, 300);
+      };
+
+      player.onerror = function () {
+        if (idSesiune === idRedareCurent) {
+          redaUrmatorulDinCoada(idSesiune);
+        }
+      };
+
+      player.play().catch(function () {
+        coadaAudio = [];
+      });
+    }
+
+    function redaListaAudio(listaBase64) {
+      opresteTotSunetul();
+      if (!sunetActiv || !listaBase64 || listaBase64.length === 0) return;
+
+      const idSesiune = ++idRedareCurent;
+      coadaAudio = listaBase64.slice();
+      redaUrmatorulDinCoada(idSesiune);
+    }
+
+    function adaugaMesaj(text, tip) {
+      const box = document.getElementById("chatMessages");
+      const div = document.createElement("div");
+      div.className = "msg " + tip;
+      div.textContent = text;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // ----- animația „scrie...” -----
+    function arataIncarcare() {
+      ascundeIncarcare();
+      const box = document.getElementById("chatMessages");
+      const div = document.createElement("div");
+      div.id = "indicatorIncarcare";
+      div.className = "msg bot typing";
+      div.setAttribute("aria-label", "Asistentul pregătește răspunsul");
+      div.innerHTML = "<span></span><span></span><span></span>";
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function ascundeIncarcare() {
+      const el = document.getElementById("indicatorIncarcare");
+      if (el) el.remove();
+    }
+
+    // ----- linkuri: se afișează ca butoane, nu se citesc cu voce -----
+    function adaugaLinkuri(linkuri) {
+      if (!linkuri || linkuri.length === 0) return;
+
+      const box = document.getElementById("chatMessages");
+      const lista = document.createElement("div");
+      lista.className = "link-list";
+
+      for (const l of linkuri) {
+        if (!l || typeof l.url !== "string" || !l.url.startsWith("https://")) continue;
+        const a = document.createElement("a");
+        a.className = "link-btn";
+        a.href = l.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = "🔗 " + (l.titlu || l.url.replace("https://", ""));
+        a.title = l.url;
+        lista.appendChild(a);
+      }
+
+      if (lista.children.length > 0) {
+        box.appendChild(lista);
+        box.scrollTop = box.scrollHeight;
+      }
+    }
+
+    function deschideConfigurator(titlu, pretText, urlOficial) {
+      serviciuCurentModal = titlu;
+      document.getElementById("modalTitle").textContent = titlu;
+      document.getElementById("linkOficialPago").href = urlOficial;
+
+      const match = pretText.match(/\d+/);
+      pretBazaModal = match ? parseInt(match[0], 10) : 30;
+
+      const tLower = titlu.toLowerCase();
+      const durataGroup = document.getElementById("durataGroup");
+      const persoaneGroup = document.getElementById("persoaneGroup");
+      const durataSelect = document.getElementById("durataSelect");
+
+      if (tLower.includes("rca") || tLower.includes("locuință")) {
+        durataSelect.innerHTML = '<option value="1">12 luni (Poliță anuală)</option>';
+        persoaneGroup.style.display = "none";
+      } else if (tLower.includes("rovinietă")) {
+        durataSelect.innerHTML =
+          '<option value="1">10 zile (17 lei)</option>' +
+          '<option value="1.6">30 zile (27 lei)</option>' +
+          '<option value="8.2">12 luni (140 lei)</option>';
+        persoaneGroup.style.display = "none";
+      } else if (tLower.includes("reîncărcare")) {
+        durataSelect.innerHTML =
+          '<option value="1">Opțiune 5 € Roaming (25 lei)</option>' +
+          '<option value="2">Opțiune 10 € Roaming (50 lei)</option>';
+        persoaneGroup.style.display = "none";
+      } else {
+        durataSelect.innerHTML =
+          '<option value="1">7 zile</option>' +
+          '<option value="1.8">14 zile</option>' +
+          '<option value="3.2">30 zile</option>';
+        persoaneGroup.style.display = "flex";
+      }
+
+      durataGroup.style.display = "flex";
+      document.getElementById("persoaneSelect").value = "1";
+      recalculeazaPret();
+      document.getElementById("pagoModal").classList.add("active");
+    }
+
+    function inchideModal() {
+      document.getElementById("pagoModal").classList.remove("active");
+    }
+
+    function recalculeazaPret() {
+      const multDurata = parseFloat(document.getElementById("durataSelect").value || "1");
+      const persoaneVisible = document.getElementById("persoaneGroup").style.display !== "none";
+      const nrPers = persoaneVisible ? parseInt(document.getElementById("persoaneSelect").value || "1", 10) : 1;
+      const total = Math.round(pretBazaModal * multDurata * nrPers);
+      document.getElementById("pretCalculat").textContent = total + " lei";
+    }
+
+    function emiteServiciu() {
+      const titular = document.getElementById("titularInput").value.trim() || "Utilizator Pago";
+      const total = document.getElementById("pretCalculat").textContent;
+      inchideModal();
+      adaugaMesaj(
+        "✅ Emis cu succes: " + serviciuCurentModal + " pe numele " + titular + " (" + total + "). Documentul a fost salvat în contul tău Pago!",
+        "bot"
+      );
+    }
+
+    function adaugaCarduriActiuni(actiuni) {
+      if (!actiuni || actiuni.length === 0) return;
+
+      const box = document.getElementById("chatMessages");
+      const wrapper = document.createElement("div");
+      wrapper.className = "package-wrapper";
+
+      const header = document.createElement("div");
+      header.className = "package-header";
+      header.textContent = "Servicii Pago recomandate (Configurează & Emite)";
+      wrapper.appendChild(header);
+
+      const grid = document.createElement("div");
+      grid.className = "package-grid";
+
+      for (let i = 0; i < actiuni.length; i++) {
+        const a = actiuni[i];
+        const card = document.createElement("div");
+        card.className = "action-card";
+
+        const infoDiv = document.createElement("div");
+        const h4 = document.createElement("h4");
+        h4.textContent = a.titlu;
+
+        const priceDiv = document.createElement("div");
+        priceDiv.className = "action-price";
+        priceDiv.textContent = a.pret;
+
+        const descP = document.createElement("p");
+        descP.className = "action-desc";
+        descP.textContent = a.descriere;
+
+        infoDiv.appendChild(h4);
+        infoDiv.appendChild(priceDiv);
+        infoDiv.appendChild(descP);
+
+        const btn = document.createElement("button");
+        btn.className = "anchor-btn";
+        btn.textContent = a.buton;
+        btn.onclick = function () {
+          deschideConfigurator(a.titlu, a.pret, a.url);
+        };
+
+        card.appendChild(infoDiv);
+        card.appendChild(btn);
+        grid.appendChild(card);
+      }
+
+      wrapper.appendChild(grid);
+      box.appendChild(wrapper);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function randeazaFacturi(facturi) {
+      const container = document.getElementById("listaFacturi");
+      container.innerHTML = "";
+
+      for (const [cheie, f] of Object.entries(facturi)) {
+        const ePlatita = f.status === "plătită";
+        const item = document.createElement("div");
+        item.className = "bill-item";
+
+        const infoDiv = document.createElement("div");
+        infoDiv.className = "bill-info";
+        const h3 = document.createElement("h3");
+        h3.textContent = f.nume;
+        const pServ = document.createElement("p");
+        pServ.textContent = f.serviciu;
+        const pScad = document.createElement("p");
+        pScad.textContent = "Scadență: ";
+        const strong = document.createElement("strong");
+        strong.textContent = f.scadenta;
+        pScad.appendChild(strong);
+        infoDiv.appendChild(h3);
+        infoDiv.appendChild(pServ);
+        infoDiv.appendChild(pScad);
+
+        const rightDiv = document.createElement("div");
+        rightDiv.className = "bill-right";
+
+        const amountDiv = document.createElement("div");
+        amountDiv.className = "bill-amount";
+        amountDiv.textContent = f.suma;
+
+        const badge = document.createElement("span");
+        badge.className = "badge " + (ePlatita ? "platita" : "neplatita");
+        badge.textContent = ePlatita ? "Plătită" : "Neplătită";
+
+        rightDiv.appendChild(amountDiv);
+        rightDiv.appendChild(badge);
+
+        if (!ePlatita) {
+          rightDiv.appendChild(document.createElement("br"));
+          const payBtn = document.createElement("button");
+          payBtn.className = "pay-btn";
+          payBtn.textContent = "Plătește";
+          payBtn.onclick = function () {
+            plateste(cheie);
+          };
+          rightDiv.appendChild(payBtn);
+        }
+
+        item.appendChild(infoDiv);
+        item.appendChild(rightDiv);
+        container.appendChild(item);
+      }
+    }
+
+    async function incarcaFacturi() {
+      try {
+        const res = await fetch("/api/facturi");
+        const data = await res.json();
+        randeazaFacturi(data);
+      } catch (e) {
+        document.getElementById("listaFacturi").textContent = "Nu am putut încărca facturile.";
+      }
+    }
+
+    async function plateste(furnizor) {
+      const res = await fetch("/api/plateste/" + furnizor, { method: "POST" });
+      const data = await res.json();
+      if (data.ok) {
+        randeazaFacturi(data.facturi);
+        adaugaMesaj(data.mesaj, "bot");
+        redaListaAudio(data.audio_lista);
+      }
+    }
+
+    function trimiteRapid(text) {
+      if (cerereInCurs) return;
+      document.getElementById("userInput").value = text;
+      trimiteMesaj();
+    }
+
+    async function trimiteMesaj() {
+      if (cerereInCurs) return;
+      const input = document.getElementById("userInput");
+      const sendBtn = document.getElementById("sendBtn");
+      const intrebare = input.value.trim();
+      if (!intrebare) return;
+
+      opresteTotSunetul();
+      cerereInCurs = true;
+      sendBtn.disabled = true;
+      adaugaMesaj(intrebare, "user");
+      input.value = "";
+      arataIncarcare();
+
+      try {
+        const res = await fetch("/api/intreaba", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ intrebare: intrebare }),
+        });
+
+        const data = await res.json();
+        ascundeIncarcare();
+        adaugaMesaj(data.raspuns, "bot");
+        adaugaLinkuri(data.linkuri);
+        adaugaCarduriActiuni(data.actiuni);
+        redaListaAudio(data.audio_lista);
+        if (data.facturi) randeazaFacturi(data.facturi);
+      } catch (e) {
+        ascundeIncarcare();
+        adaugaMesaj("Nu am putut primi răspunsul. Verifică dacă serverul rulează și încearcă din nou.", "bot");
+      } finally {
+        ascundeIncarcare();
+        cerereInCurs = false;
+        sendBtn.disabled = false;
+        arataStarea();
+      }
+    }
+
+    function pornesteMicrofon() {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        alert("Folosește Chrome sau Edge pentru recunoașterea vocală.");
+        return;
+      }
+
+      opresteTotSunetul();
+      const recognition = new SpeechRecognition();
+      recognition.lang = "ro-RO";
+      recognition.interimResults = false;
+
+      const micBtn = document.getElementById("micBtn");
+      micBtn.classList.add("listening");
+      micBtn.textContent = "🔴 Ascult...";
+
+      recognition.onresult = function (event) {
+        const text = event.results[0][0].transcript;
+        document.getElementById("userInput").value = text;
+        trimiteMesaj();
+      };
+
+      recognition.onend = function () {
+        micBtn.classList.remove("listening");
+        micBtn.textContent = "🎤 Vorbește";
+      };
+
+      recognition.start();
+    }
+
+    let avertizareAfisata = false;
+
+    async function arataStarea() {
+      const el = document.getElementById("stareAI");
+      try {
+        const res = await fetch("/api/stare");
+        const s = await res.json();
+        el.textContent = "v" + s.versiune + (s.gemini ? " · 🟢 Gemini conectat" : " · 🟠 fără Gemini");
+        el.title = s.gemini ? "Model: " + (s.model || "Gemini") : (s.motiv || "");
+        if (!s.gemini && s.motiv && !avertizareAfisata) {
+          avertizareAfisata = true;
+          adaugaMesaj("⚠️ Gemini nu este activ. Motivul: " + s.motiv + ".", "bot");
+        }
+        if (s.gemini) avertizareAfisata = false;
+      } catch (e) {
+        el.textContent = "⚠️ server vechi sau oprit";
+      }
+    }
+
+    incarcaFacturi();
+    arataStarea();
+  </script>
+</body>
+</html>
