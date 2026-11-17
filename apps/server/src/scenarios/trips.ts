@@ -20,6 +20,14 @@ export interface Requirement {
   alternatives?: ProductType[];
 }
 
+/** Ce trebuie să știi despre o țară: acte, taxe de drum (cu prețuri estimative), roaming. */
+export interface CountryInfo {
+  documents: string;
+  roadTolls: string;
+  tollEstimate?: string;
+  roaming?: string;
+}
+
 export interface CountryRules {
   code: string;
   name: string;
@@ -27,6 +35,7 @@ export interface CountryRules {
   aliases: string[];
   verified: boolean;
   requirements: Requirement[];
+  info?: CountryInfo;
 }
 
 export function loadCountryRules(): CountryRules[] {
@@ -53,10 +62,12 @@ export interface ChecklistItem {
   productType: ProductType;
   alternatives?: ProductType[];
   suggestedProduct?: { id: string; name: string; price: number };
+  /** Pentru viniete / internet: țara actului (ex. „HU”). */
+  country?: string;
 }
 
 export type ChecklistResult =
-  | { known: false; country: string; message: string }
+  | { known: false; country: string; message: string; trip: { start: IsoDate; end: IsoDate }; withCar: boolean | null }
   | {
       known: true;
       country: string;
@@ -68,6 +79,7 @@ export type ChecklistResult =
       trip: { start: IsoDate; end: IsoDate };
       items: ChecklistItem[];
       missingCount: number;
+      info?: CountryInfo;
     };
 
 export interface TripInput {
@@ -87,20 +99,25 @@ export function findCountry(rules: CountryRules[], input: string): CountryRules 
 
 export function runTripChecklist(store: PagoStore, input: TripInput, rules: CountryRules[] = loadCountryRules()): ChecklistResult {
   const country = findCountry(rules, String(input.country ?? ""));
-  if (!country) {
-    return {
-      known: false,
-      country: String(input.country ?? ""),
-      message: "Nu am reguli pentru această țară. Spune-i utilizatorului cinstit că nu ai informații despre actele necesare.",
-    };
-  }
-
   const today = store.today();
   const start = addDays(today, Math.max(0, Math.round(input.startInDays ?? 7)));
   const end = addDays(start, Math.max(1, Math.round(input.days ?? 7)));
   const vehicle = store.getVehicles()[0];
   const hasCar = Boolean(vehicle);
   const withCar = input.withCar === undefined ? (hasCar ? null : false) : input.withCar && hasCar;
+
+  if (!country) {
+    // Țară fără reguli în baza noastră: NU răspundem „nu știu”. Modelul folosește cunoștințele lui generale
+    // (marcate ca orientative), iar interfața arată oricum pachetele de asigurare de călătorie.
+    return {
+      known: false,
+      country: String(input.country ?? ""),
+      trip: { start, end },
+      withCar,
+      message:
+        "Țara nu e în baza de reguli a aplicației. NU spune că nu știi. Din cunoștințele tale generale, spune pe scurt: ce act trebuie (carte de identitate sau pașaport, viză dacă e cazul), taxele de drum (vinietă, autostradă cu taxă sau gratuit) cu un preț estimativ, și dacă roamingul e inclus. Spune clar că sunt informații orientative de verificat pe mae.ro. Spune că pe ecran sunt pachetele de asigurare de călătorie, unde poate alege numărul de persoane. Nu pregăti plăți pentru acte din afara catalogului.",
+    };
+  }
 
   const product = (id?: string) => {
     const p = id ? store.searchProducts().find((x) => x.id === id) : undefined;
@@ -112,7 +129,7 @@ export function runTripChecklist(store: PagoStore, input: TripInput, rules: Coun
     if (req.when === "car" && withCar !== true) continue;
     const base = {
       id: req.id, label: req.label, short: req.short, productType: req.productType,
-      alternatives: req.alternatives, suggestedProduct: product(req.suggestedProductId),
+      alternatives: req.alternatives, suggestedProduct: product(req.suggestedProductId), country: req.country,
     };
 
     if (req.check === "rca_covers") {
@@ -160,6 +177,7 @@ export function runTripChecklist(store: PagoStore, input: TripInput, rules: Coun
     trip: { start, end },
     items,
     missingCount: items.filter((i) => i.status === "missing").length,
+    info: country.info,
   };
 }
 

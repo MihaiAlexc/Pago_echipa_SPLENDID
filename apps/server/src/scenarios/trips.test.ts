@@ -65,12 +65,12 @@ describe("run_trip_checklist", () => {
     const rules: CountryRules[] = [
       ...loadCountryRules(),
       {
-        code: "HU", name: "Ungaria", inName: "în Ungaria", aliases: ["ungaria"], verified: false,
-        requirements: [{ id: "vignette-hu", when: "car", check: "vignette", country: "HU", label: "Vinietă Ungaria", short: "vinieta pentru Ungaria", productType: "vignette" }],
+        code: "IS", name: "Islanda", inName: "în Islanda", aliases: ["islanda"], verified: false,
+        requirements: [{ id: "vignette-is", when: "car", check: "vignette", country: "IS", label: "Vinietă Islanda", short: "vinieta pentru Islanda", productType: "vignette" }],
       },
     ];
-    const r = runTripChecklist(newStore(), { country: "Ungaria", withCar: true }, rules);
-    expect(r).toMatchObject({ known: true, country: "HU", missingCount: 1 });
+    const r = runTripChecklist(newStore(), { country: "Islanda", withCar: true }, rules);
+    expect(r).toMatchObject({ known: true, country: "IS", missingCount: 1 });
   });
 });
 
@@ -84,5 +84,35 @@ describe("get_expiring_items", () => {
 
   it("totul în regulă → nimic urgent", () => {
     expect(getExpiringItems(newStore("all-good"), 30)).toEqual([]);
+  });
+});
+
+describe("călătorii în toată Europa și în orice țară", () => {
+  it("Germania: autostrăzi gratuite, CI, viniete Ungaria + Austria pe drum, RCA-ul standard acoperă Germania", () => {
+    const r = runTripChecklist(newStore(), { country: "Germania", withCar: true, startInDays: 1, days: 4 });
+    if (!r.known) throw new Error("Germania ar trebui să fie în reguli");
+    expect(r.info?.documents).toMatch(/identitate/i);
+    expect(r.info?.roadTolls).toMatch(/GRATUITE/);
+    const ids = r.items.filter((i) => i.status === "missing").map((i) => i.id);
+    expect(ids).toEqual(expect.arrayContaining(["vignette-hu", "vignette-at"]));
+    expect(r.items.find((i) => i.id === "rca")?.status).toBe("ok"); // RCA-ul Mariei acoperă DE și e valabil 6 zile
+    expect(r.items.find((i) => i.id === "vignette-hu")?.suggestedProduct?.id).toBe("vinieta-hu-10z");
+  });
+
+  it("toate țările au acte și taxe de drum completate", () => {
+    const rules = loadCountryRules();
+    expect(rules.length).toBeGreaterThanOrEqual(20);
+    for (const c of rules) {
+      expect(c.info?.documents, c.code).toBeTruthy();
+      expect(c.info?.roadTolls, c.code).toBeTruthy();
+    }
+  });
+
+  it("țară care nu e în reguli (Japonia): nu „nu știu”, ci instrucțiuni să răspundă din cunoștințe + datele călătoriei", () => {
+    const r = runTripChecklist(newStore(), { country: "Japonia", days: 10 });
+    expect(r.known).toBe(false);
+    if (r.known) return;
+    expect(r.message).toMatch(/NU spune că nu știi/);
+    expect(r.trip.start < r.trip.end).toBe(true);
   });
 });

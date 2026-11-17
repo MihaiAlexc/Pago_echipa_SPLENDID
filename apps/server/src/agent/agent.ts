@@ -6,6 +6,19 @@ import { EVENT_TAG, type LlmClient } from "./llm.ts";
 import { SYSTEM_PROMPT } from "./prompt.ts";
 import { CATEGORY_RO, TOOL_DEFINITIONS, executeTool, type ToolResult } from "./tools.ts";
 import { getExpiringItems } from "../scenarios/trips.ts";
+import { spokenLei } from "./scripted.ts";
+
+/** Blocul prin care aplicația îi spune modelului ce s-a decis deja în cod. */
+function eventBlock(outcome: TurnOutcome): Anthropic.Beta.BetaTextBlockParam {
+  return { type: "text", text: `<${EVENT_TAG}>${JSON.stringify(outcome)}</${EVENT_TAG}>` };
+}
+
+/** „ Plata de 187,40 lei încă așteaptă: spune „da” ca s-o fac sau „nu” ca s-o anulez.” */
+export function pendingReminder(pending: PendingPaymentForClient): string {
+  return pending.requiresScreenConfirm
+    ? ` Plata de ${spokenLei(pending.total)} încă așteaptă confirmarea cu butonul de pe ecran.`
+    : ` Plata de ${spokenLei(pending.total)} încă așteaptă: spune „da” ca s-o fac sau „nu” ca s-o anulez.`;
+}
 
 /** Câte runde model → tool-uri permitem într-o singură tură (protecție împotriva buclelor). */
 const MAX_STEPS = 8;
@@ -86,17 +99,27 @@ export class Agent {
   }
 
   async chat(sessionId: string, text: string): Promise<ChatResult> {
+    // 1) ÎNAINTE de LLM: un „da”/„nu” clar la o plată în așteptare se decide în cod.
+    const outcome = this.deps.confirmation.handleUserMessage(sessionId, text);
+    const content: Anthropic.Beta.BetaContentBlockParam[] = [{ type: "text", text }];
+    if (outcome.kind !== "pass") content.push(eventBlock(outcome));
+    return this.run(sessionId, content, outcome);
+  }
+
+  /**
+   * Butonul Confirmă / Anulează de pe ecran. Plata a fost deja decisă în cod (payments/confirmation.ts);
+   * aici modelul doar află ce s-a întâmplat și spune ce urmează — la fel ca după un „da” / „nu” rostit
+   * (ce a mai rămas de plată, următorul pas din pregătirea unei călătorii).
+   */
+  async afterButton(sessionId: string, outcome: Extract<TurnOutcome, { kind: "confirmed" | "cancelled" }>): Promise<ChatResult> {
+    return this.run(sessionId, [eventBlock(outcome)], outcome);
+  }
+
+  private async run(sessionId: string, content: Anthropic.Beta.BetaContentBlockParam[], outcome: TurnOutcome): Promise<ChatResult> {
     const { store, confirmation, llm } = this.deps;
     const history = this.sessions.get(sessionId) ?? [];
     const rollbackTo = history.length;
     const toolCalls: ToolCallRecord[] = [];
-
-    // 1) ÎNAINTE de LLM: un „da”/„nu” clar la o plată în așteptare se decide în cod.
-    const outcome = confirmation.handleUserMessage(sessionId, text);
-    const content: Anthropic.Beta.BetaContentBlockParam[] = [{ type: "text", text }];
-    if (outcome.kind !== "pass") {
-      content.push({ type: "text", text: `<${EVENT_TAG}>${JSON.stringify(outcome)}</${EVENT_TAG}>` });
-    }
     history.push({ role: "user", content });
 
     // 2) Bucla cu modelul.
@@ -139,7 +162,14 @@ export class Agent {
 
       if (!reply) reply = "Scuze, m-am încurcat. Poți să repeți, te rog?";
       this.sessions.set(sessionId, history);
-      return { reply, outcome: outcome.kind, toolCalls, pending: confirmation.getPendingForClient(sessionId) };
+
+      // 3) SIGURANȚĂ, în cod: dacă o plată pregătită mai devreme încă așteaptă și modelul a vorbit despre
+      //    altceva, îi amintim utilizatorului de ea. Altfel un „da” spus la altă întrebare ar confirma plata.
+      const pending = confirmation.getPendingForClient(sessionId);
+      const talkedAboutIt = toolCalls.some((c) => c.name === "prepare_payment" || c.name === "get_pending_payment");
+      if (pending && !talkedAboutIt && outcome.kind !== "needs_screen") reply += pendingReminder(pending);
+
+      return { reply, outcome: outcome.kind, toolCalls, pending };
     } catch (e) {
       // Eroare de rețea / LLM: istoricul revine la starea de dinainte (fără tool_use fără rezultat).
       history.length = rollbackTo;

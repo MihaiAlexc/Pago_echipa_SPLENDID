@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { addDays, daysBetween, type Bill, type IsoDate, type PaymentRequestItem, type ProductType } from "@pago/shared";
 import { PagoError, type PagoStore } from "../mock/store.ts";
 import type { PaymentConfirmation } from "../payments/confirmation.ts";
-import { getExpiringItems, runTripChecklist } from "../scenarios/trips.ts";
+import { getExpiringItems, loadCountryRules, runTripChecklist } from "../scenarios/trips.ts";
 
 /**
  * Tool-urile pe care le poate apela LLM-ul.
@@ -53,17 +53,17 @@ export const TOOL_DEFINITIONS: Anthropic.Beta.BetaTool[] = [
   },
   {
     name: "search_products",
-    description: "Caută în catalog produse de cumpărat: 'rca', 'vignette' (rovinietă/vinietă), 'roaming', 'sim' (cartelă). Întoarce id, nume, preț, durată.",
+    description: "Caută în catalog produse de cumpărat: 'rca', 'vignette' (rovinietă/vinietă), 'roaming', 'sim' (cartelă), 'travel' (asigurare de călătorie, preț PE PERSOANĂ: perPerson=true, 10% reducere de la 4 persoane). Întoarce id, nume, preț, durată.",
     input_schema: {
       type: "object",
-      properties: { type: { type: "string", enum: ["rca", "vignette", "roaming", "sim"] } },
+      properties: { type: { type: "string", enum: ["rca", "vignette", "roaming", "sim", "travel"] } },
       required: ["type"],
     },
   },
   {
     name: "run_trip_checklist",
     description:
-      "Verifică ce îi trebuie utilizatorului pentru o călătorie într-o țară, după reguli fixe (RCA / Carte Verde, viniete pe drum, internet). Întoarce ce are deja, ce lipsește și produsul sugerat pentru fiecare lipsă. Dacă țara nu e cunoscută, întoarce known=false: atunci spune cinstit că nu ai informații. Dacă withCar=null, întreabă întâi dacă ia mașina. Regulile sunt exemple (verified=false).",
+      "Verifică ce îi trebuie utilizatorului pentru o călătorie într-o țară, după reguli fixe (RCA / Carte Verde, viniete pe drum, internet). Întoarce ce are deja, ce lipsește și produsul sugerat pentru fiecare lipsă. Întoarce și info: acte necesare (CI/pașaport), taxe de drum cu prețuri estimative, roaming. Dacă țara nu e în reguli, întoarce known=false: atunci răspunde din cunoștințele tale generale (orientativ), NU spune că nu știi. Dacă withCar=null, întreabă întâi dacă ia mașina. Regulile sunt exemple (verified=false).",
     input_schema: {
       type: "object",
       properties: {
@@ -82,6 +82,31 @@ export const TOOL_DEFINITIONS: Anthropic.Beta.BetaTool[] = [
       type: "object",
       properties: { days: { type: "number", description: "Implicit 30" } },
     },
+  },
+  {
+    name: "get_profile",
+    description: "Datele utilizatorului din cont (nume, telefon) și data de azi (ziua săptămânii, data, ora). Folosește-l când întreabă cum îl cheamă, ce număr de telefon are sau ce zi e azi.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "list_payments",
+    description: "Istoricul plăților făcute prin asistent (ce s-a plătit, cât și când), cea mai veche prima. Doar citire.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "check_services",
+    description: "Pachetele de roaming și cartelele (SIM) pe care utilizatorul le are deja, cu țara și valabilitatea.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "list_trip_countries",
+    description: "Țările pentru care există reguli de călătorie (run_trip_checklist). verified=false înseamnă că regulile sunt orientative.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_pending_payment",
+    description: "Plata pregătită care așteaptă confirmarea utilizatorului (linii, total, dacă cere butonul de pe ecran), sau pending=null dacă nu e niciuna. Doar citire: nu confirmă și nu anulează nimic.",
+    input_schema: { type: "object", properties: {} },
   },
   {
     name: "add_bill",
@@ -125,6 +150,7 @@ export const TOOL_DEFINITIONS: Anthropic.Beta.BetaTool[] = [
               billId: { type: "string", description: "Pentru kind='bill'" },
               productId: { type: "string", description: "Pentru kind='product'" },
               vehicleId: { type: "string", description: "Opțional, pentru RCA/vinietă" },
+              persons: { type: "integer", minimum: 1, maximum: 9, description: "Doar pentru asigurarea de călătorie: câte persoane (implicit 1). Suma o calculează aplicația." },
             },
             required: ["kind"],
           },
@@ -187,6 +213,31 @@ export function executeTool(ctx: ToolContext, name: string, input: unknown): Too
         };
       case "get_expiring_items":
         return { ok: true, data: getExpiringItems(ctx.store, typeof args.days === "number" ? args.days : 30) };
+      case "get_profile": {
+        const user = ctx.store.getUser();
+        const today = ctx.store.today();
+        return {
+          ok: true,
+          data: { name: user.name, firstName: user.name.split(" ")[0], phone: user.phone, today, weekday: weekdayRo(today), time: ctx.store.timeNow() },
+        };
+      }
+      case "list_payments":
+        return {
+          ok: true,
+          data: ctx.store.listPayments().map((p) => ({
+            id: p.id, total: p.total, date: p.createdAt.slice(0, 10),
+            lines: p.lines.map((l) => ({ kind: l.kind, label: l.label, amount: l.amount })),
+          })),
+        };
+      case "check_services":
+        return {
+          ok: true,
+          data: ctx.store.getServices().map((s) => ({ ...s, daysLeft: daysBetween(ctx.store.today(), s.validUntil) })),
+        };
+      case "list_trip_countries":
+        return { ok: true, data: loadCountryRules().map((c) => ({ code: c.code, name: c.name, verified: c.verified })) };
+      case "get_pending_payment":
+        return { ok: true, data: { pending: ctx.confirmation.getPendingSummary(ctx.sessionId) } }; // fără token
       case "add_bill": {
         const today = ctx.store.today();
         const dueDate = resolveDueDate(today, args.dueDate, args.dueInDays);
@@ -228,6 +279,14 @@ export function executeTool(ctx: ToolContext, name: string, input: unknown): Too
     const err = e as { code?: string; message?: string };
     return { ok: false, error: err.code ?? "TOOL_ERROR", message: err.message ?? "Eroare la tool." };
   }
+}
+
+const WEEKDAYS_RO = ["duminică", "luni", "marți", "miercuri", "joi", "vineri", "sâmbătă"];
+
+/** „2026-11-16” → „luni” */
+export function weekdayRo(date: IsoDate): string {
+  const [y, m, d] = date.split("-").map(Number);
+  return WEEKDAYS_RO[new Date(y, m - 1, d).getDay()];
 }
 
 function listBills(ctx: ToolContext, status: unknown) {
@@ -279,7 +338,12 @@ function parseItems(raw: unknown): PaymentRequestItem[] {
     const o = (it ?? {}) as Record<string, unknown>;
     if (o.kind === "bill" && typeof o.billId === "string") return { kind: "bill", billId: o.billId };
     if (o.kind === "product" && typeof o.productId === "string") {
-      return { kind: "product", productId: o.productId, vehicleId: typeof o.vehicleId === "string" ? o.vehicleId : undefined };
+      return {
+        kind: "product",
+        productId: o.productId,
+        vehicleId: typeof o.vehicleId === "string" ? o.vehicleId : undefined,
+        persons: typeof o.persons === "number" ? o.persons : undefined,
+      };
     }
     throw new PagoError("EMPTY_PAYMENT", "Element de plată invalid.");
   });

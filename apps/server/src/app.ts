@@ -3,15 +3,33 @@ import type { BillStatus, PaymentRequestItem, ProductType, SeedVariant } from "@
 import { PagoError, PagoStore, type DocumentInput, type NewBillInput, type VehicleInput } from "./mock/store.ts";
 import { ConfirmError, PaymentConfirmation } from "./payments/confirmation.ts";
 import { Agent } from "./agent/agent.ts";
+import { cardsFromToolCalls } from "./agent/cards.ts";
 import { ClaudeClient } from "./agent/claude.ts";
+import { GroqClient } from "./agent/groq.ts";
 import type { LlmClient } from "./agent/llm.ts";
 import { ScriptedLlm } from "./agent/scripted.ts";
 
-/** Modelul real doar dacă e cerut explicit și avem cheie; altfel modelul simulat. */
+/**
+ * Un model real doar dacă e cerut explicit (LLM_MODE) și avem cheia lui; altfel modelul simulat.
+ *   LLM_MODE=groq   + GROQ_API_KEY      → Llama 3.3 70B prin Groq
+ *   LLM_MODE=claude + ANTHROPIC_API_KEY → Claude
+ */
 export function createLlmFromEnv(): LlmClient {
-  if (process.env.LLM_MODE === "claude" && process.env.ANTHROPIC_API_KEY) return new ClaudeClient();
-  if (process.env.LLM_MODE === "claude") console.warn("LLM_MODE=claude, dar lipsește ANTHROPIC_API_KEY → folosesc modelul simulat.");
+  const mode = process.env.LLM_MODE;
+  if (mode === "groq") {
+    if (process.env.GROQ_API_KEY) return new GroqClient();
+    console.warn("LLM_MODE=groq, dar lipsește GROQ_API_KEY → folosesc modelul simulat.");
+  }
+  if (mode === "claude") {
+    if (process.env.ANTHROPIC_API_KEY) return new ClaudeClient();
+    console.warn("LLM_MODE=claude, dar lipsește ANTHROPIC_API_KEY → folosesc modelul simulat.");
+  }
   return new ScriptedLlm();
+}
+
+/** Originile aplicației Android (Capacitor WebView). */
+export function isAppOrigin(origin: string): boolean {
+  return /^(https?|capacitor):\/\/localhost(:\d+)?$/.test(origin);
 }
 
 const CONFIRM_STATUS: Record<string, number> = {
@@ -24,7 +42,7 @@ const CONFIRM_STATUS: Record<string, number> = {
 };
 
 const BILL_STATUSES: BillStatus[] = ["unpaid", "paid", "overdue"];
-const PRODUCT_TYPES: ProductType[] = ["rca", "vignette", "roaming", "sim"];
+const PRODUCT_TYPES: ProductType[] = ["rca", "vignette", "roaming", "sim", "travel"];
 const VARIANTS: SeedVariant[] = ["demo", "all-good", "rca-expired", "no-bills"];
 
 export interface AppOptions {
@@ -51,13 +69,26 @@ export function buildApp(options: AppOptions = {}) {
     if (err instanceof PagoError) {
       const status = err.code.endsWith("NOT_FOUND")
         ? 404 // nu există
-        : ["EMPTY_PAYMENT", "DUPLICATE_ITEM", "INVALID_BILL", "INVALID_CAR", "INVALID_DOCUMENT"].includes(err.code)
+        : ["EMPTY_PAYMENT", "DUPLICATE_ITEM", "INVALID_BILL", "INVALID_CAR", "INVALID_DOCUMENT", "INVALID_PERSONS", "INVALID_NAME"].includes(err.code)
           ? 400 // cerere greșită
           : 409; // conflict cu starea datelor (ex. factură deja plătită)
       return reply.status(status).send({ error: err.code, message: err.message });
     }
     const e = err as { statusCode?: number; message?: string };
     reply.status(e.statusCode ?? 500).send({ error: "INTERNAL", message: e.message ?? "Eroare internă" });
+  });
+
+  // CORS doar pentru aplicația Android (Capacitor): pagina ei rulează pe http://localhost în telefon și
+  // trimite cereri direct la laptop (http://192.168.x.x:3001). Browserul de pe laptop trece prin proxy-ul
+  // Vite (aceeași origine), deci nu are nevoie de CORS. Alte site-uri nu primesc acces.
+  app.addHook("onRequest", async (req, reply) => {
+    const origin = req.headers.origin;
+    if (!origin || !isAppOrigin(origin)) return;
+    reply.header("access-control-allow-origin", origin);
+    reply.header("vary", "origin");
+    reply.header("access-control-allow-methods", "GET, POST, PUT, DELETE, OPTIONS");
+    reply.header("access-control-allow-headers", "content-type");
+    if (req.method === "OPTIONS") return reply.status(204).send();
   });
 
   // Toate rutele stau sub /api; frontend-ul (Vite) le trimite aici prin proxy.
@@ -86,12 +117,14 @@ export function buildApp(options: AppOptions = {}) {
       outcome: result.outcome,
       pending: result.pending,
       actions: result.toolCalls.map((c) => c.name),
+      cards: cardsFromToolCalls(result.toolCalls, store),
     };
   });
 
   // ---------- API Pago simulat (doar citire) ----------
 
   app.get("/api/me", async () => store.getUser());
+  app.put<{ Body: { name?: string } }>("/api/me", async (req) => store.updateUserName(req.body?.name));
 
   app.get<{ Querystring: { status?: string } }>("/api/bills", async (req, reply) => {
     const { status } = req.query;
@@ -124,6 +157,7 @@ export function buildApp(options: AppOptions = {}) {
       policies: vehicle ? store.getPolicies(vehicle.id) : [],
       vignettes: vehicle ? store.getVignettes(vehicle.id) : [],
       services: store.getServices(),
+      inspections: vehicle ? store.getInspections(vehicle.id) : [],
     };
   });
 
@@ -181,16 +215,23 @@ export function buildApp(options: AppOptions = {}) {
     return { pending: confirmation.getPendingForClient(req.query.sessionId) };
   });
 
-  app.post<{ Body: { sessionId?: string; token?: string } }>("/api/payments/confirm", async (req, reply) => {
-    const { sessionId, token } = req.body ?? {};
+  // `quiet: true` = plată făcută direct din ecrane (Facturi, Mașina...), fără asistent: nu mai întrebăm modelul ce urmează.
+  app.post<{ Body: { sessionId?: string; token?: string; quiet?: boolean } }>("/api/payments/confirm", async (req, reply) => {
+    const { sessionId, token, quiet } = req.body ?? {};
     if (!sessionId || !token) return badRequest(reply, "Lipsește sessionId sau token.");
-    return { payment: confirmation.confirm(sessionId, token, "button") };
+    const payment = confirmation.confirm(sessionId, token, "button");
+    if (quiet) return { payment, reply: null, pending: null };
+    // Asistentul află de plată și spune ce urmează (ce a mai rămas, următorul pas al călătoriei).
+    const next = await agent.afterButton(sessionId, { kind: "confirmed", payment });
+    return { payment, reply: next.reply, pending: next.pending };
   });
 
-  app.post<{ Body: { sessionId?: string; token?: string } }>("/api/payments/cancel", async (req, reply) => {
-    const { sessionId, token } = req.body ?? {};
+  app.post<{ Body: { sessionId?: string; token?: string; quiet?: boolean } }>("/api/payments/cancel", async (req, reply) => {
+    const { sessionId, token, quiet } = req.body ?? {};
     if (!sessionId) return badRequest(reply, "Lipsește sessionId.");
-    return { cancelled: confirmation.cancel(sessionId, token) };
+    const cancelled = confirmation.cancel(sessionId, token);
+    const next = cancelled && !quiet ? await agent.afterButton(sessionId, { kind: "cancelled" }) : null;
+    return { cancelled, reply: next?.reply ?? null };
   });
 
   // ---------- Doar pentru demo și teste: repornește povestea ----------

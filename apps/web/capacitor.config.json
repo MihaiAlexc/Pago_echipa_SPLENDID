@@ -1,0 +1,17 @@
+{
+  "appId": "com.hackathon.pagoai",
+  "appName": "Pago AI",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "LIGHT"
+    }
+  }
+}

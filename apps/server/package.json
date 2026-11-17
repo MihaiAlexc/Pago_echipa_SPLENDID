@@ -11,7 +11,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
     "@pago/shared": "*",
-    "fastify": "^5.12.8"
+    "fastify": "^5.12.8",
+    "openai": "^7.57.0"
   },
   "devDependencies": {
     "tsx": "^4.23.15"

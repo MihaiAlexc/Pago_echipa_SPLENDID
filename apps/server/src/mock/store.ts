@@ -1,5 +1,8 @@
 import {
   addDays,
+  isValidPersons,
+  MAX_PERSONS,
+  priceForPersons,
   toIsoDate,
   type Bill,
   type BillStatus,
@@ -24,6 +27,8 @@ export type PagoErrorCode =
   | "INVALID_BILL"
   | "INVALID_CAR"
   | "INVALID_DOCUMENT"
+  | "INVALID_PERSONS"
+  | "INVALID_NAME"
   | "DOCUMENT_NOT_FOUND";
 
 /** Detaliile mașinii, editate de utilizator. */
@@ -34,8 +39,9 @@ export interface VehicleInput {
   vin?: string;
 }
 
-/** Un act adăugat manual: RCA, rovinietă / vinietă, roaming sau cartelă. */
+/** Un act adăugat manual: RCA, rovinietă / vinietă, ITP, roaming sau cartelă. */
 export type DocumentInput =
+  | { kind: "itp"; vehicleId?: string; validUntil: IsoDate }
   | { kind: "rca"; vehicleId?: string; validUntil: IsoDate; coversTurkey?: boolean }
   | { kind: "vignette"; vehicleId?: string; country: "RO" | "BG"; validUntil: IsoDate }
   | { kind: "roaming" | "sim"; country: string; validUntil: IsoDate };
@@ -84,6 +90,12 @@ export class PagoStore {
     return toIsoDate(this.now());
   }
 
+  /** Ora curentă, „HH:MM” (ceasul poate fi fixat în teste). */
+  timeNow(): string {
+    const d = this.now();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
   reset(variant: SeedVariant): void {
     // Copie adâncă: modificările dintr-o sesiune nu strică seed-ul.
     this.data = structuredClone(createSeed(variant, this.today()));
@@ -93,6 +105,16 @@ export class PagoStore {
   // ---------- Citire ----------
 
   getUser() {
+    return this.data.user;
+  }
+
+  /** Schimbă numele utilizatorului (din Setări). Asistentul îl folosește imediat (salut, „cum mă cheamă?”). */
+  updateUserName(name: unknown) {
+    const clean = String(name ?? "").trim().replace(/\s+/g, " ");
+    if (clean.length < 2 || clean.length > 40 || !/^\p{L}[\p{L} .'-]*$/u.test(clean)) {
+      throw new PagoError("INVALID_NAME", "Numele trebuie să aibă 2–40 de caractere: litere, spații sau cratimă.");
+    }
+    this.data.user.name = clean;
     return this.data.user;
   }
 
@@ -177,6 +199,14 @@ export class PagoStore {
       this.data.vignettes.push(vignette);
       return vignette;
     }
+    if (input.kind === "itp") {
+      const vehicle = this.resolveVehicle(input.vehicleId);
+      // Un singur ITP pe mașină: cel nou îl înlocuiește pe cel vechi (actualizare după inspecție).
+      this.data.inspections = this.data.inspections.filter((x) => x.vehicleId !== vehicle.id);
+      const inspection = { id, vehicleId: vehicle.id, validFrom: today, validUntil: input.validUntil };
+      this.data.inspections.push(inspection);
+      return inspection;
+    }
     if (input.kind === "roaming" || input.kind === "sim") {
       const country = String(input.country ?? "").trim().toUpperCase();
       if (!/^[A-Z]{2}$/.test(country)) throw new PagoError("INVALID_DOCUMENT", "Țara trebuie dată ca cod de 2 litere (ex. TR).");
@@ -189,7 +219,7 @@ export class PagoStore {
 
   /** Șterge un act (RCA, vinietă, roaming sau cartelă) după id. */
   removeDocument(id: string): void {
-    for (const list of [this.data.policies, this.data.vignettes, this.data.services] as { id: string }[][]) {
+    for (const list of [this.data.policies, this.data.vignettes, this.data.services, this.data.inspections] as { id: string }[][]) {
       const i = list.findIndex((x) => x.id === id);
       if (i >= 0) {
         list.splice(i, 1);
@@ -213,6 +243,10 @@ export class PagoStore {
 
   getServices() {
     return this.data.services;
+  }
+
+  getInspections(vehicleId?: string) {
+    return vehicleId ? this.data.inspections.filter((x) => x.vehicleId === vehicleId) : this.data.inspections;
   }
 
   searchProducts(type?: ProductType): Product[] {
@@ -248,6 +282,13 @@ export class PagoStore {
 
       const product = this.findProduct(item.productId);
       if (product.type === "rca" || product.type === "vignette") this.resolveVehicle(item.vehicleId);
+      if (product.perPerson) {
+        // Suma tot din date: prețul din catalog × persoane (cu reducerea de grup), calculată aici, nu primită.
+        const persons = item.persons ?? 1;
+        if (!isValidPersons(persons)) throw new PagoError("INVALID_PERSONS", `Numărul de persoane trebuie să fie între 1 și ${MAX_PERSONS}.`);
+        const label = `${product.name} · ${persons} ${persons === 1 ? "persoană" : "persoane"}`;
+        return { kind: "product", refId: product.id, label, amount: priceForPersons(product.price, persons) };
+      }
       return { kind: "product", refId: product.id, label: product.name, amount: product.price };
     });
 
@@ -268,7 +309,7 @@ export class PagoStore {
         bill.status = "paid";
         bill.paidAt = today;
       } else {
-        this.deliverProduct(this.findProduct(item.productId), item.vehicleId, today);
+        this.deliverProduct(this.findProduct(item.productId), item.vehicleId, today, item.persons);
       }
     }
 
@@ -307,7 +348,7 @@ export class PagoStore {
   }
 
   /** Ce primești după ce cumperi un produs (poliță, vinietă, roaming...). */
-  private deliverProduct(product: Product, vehicleId: string | undefined, today: IsoDate): void {
+  private deliverProduct(product: Product, vehicleId: string | undefined, today: IsoDate, persons?: number): void {
     const validUntil = addDays(today, product.durationDays);
     const id = `${product.type}-${this.data.payments.length + 1}-${product.id}`;
 
@@ -329,6 +370,9 @@ export class PagoStore {
         this.data.services.push({
           id, type: product.type, country: product.country ?? "", validFrom: today, validUntil,
         });
+        break;
+      case "travel":
+        this.data.services.push({ id, type: "insurance", country: "EU+TR", validFrom: today, validUntil, persons: persons ?? 1 });
         break;
     }
   }

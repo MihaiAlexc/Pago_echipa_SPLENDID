@@ -1,0 +1,114 @@
+SESIUNE: Cercetare API-uri / SDK-uri Pago pentru integrare "plug and play"
+Data: 16-17 noiembrie 2026
+Proiect: PagoHackathon (asistent vocal pentru plata facturilor)
+
+======================================================================
+UTILIZATOR
+======================================================================
+salut, as vrea sa implementez aceasta aplicatie pe care am discutat-o cu
+tine pana acum, cea cu chat-ul de vorbire pentru plati de facturi, dar
+vreau sa o implementez direc plug and play in aplicatia pago, iar pentru
+asta vreau sa imi cauti te rog daca aplicatia pago are API-uri sau functii
+de care sa ne folosim, open-source
+
+======================================================================
+CE AM CAUTAT (pasi de lucru)
+======================================================================
+- Notele din proiect: IMPLEMENTATION_PLAN.md:95 spune ca "Mock-ul Pago
+  imita API-ul real, ca sa-l putem inlocui mai tarziu."
+- Cautari web:
+    * "Pago app Romania API developers integration partners"
+    * "pago.ro github open source SDK"
+    * "Pago plati facturi API pentru parteneri furnizori integrare"
+    * "Pago" hackathon Romania 2026 API
+- Pagina citita integral: https://pago.ro/en/b2b
+- Cautare GitHub dupa "pago.ro": niciun repository oficial Pago Romania
+  (doar proiecte personale fara legatura, majoritatea "rol de pagos").
+
+======================================================================
+ASISTENT - RASPUNS
+======================================================================
+Am terminat cautarea. Pe scurt: Pago nu are API-uri publice si nici cod
+open-source pe care sa le putem folosi direct.
+
+CE AM GASIT
+
+1. Nu exista API public sau SDK open-source
+   - N-am gasit documentatie pentru dezvoltatori, un portal de API sau un
+     repository oficial Pago pe GitHub.
+   - Pachetele "Pago SDK" de pe GitHub si Packagist sunt de la pago.sh, o
+     companie care n-are legatura cu Pago din Romania. La fel si Mercado
+     Pago sau SrPago.
+   - Aplicatia aduce facturile prin conectarea conturilor tale de la
+     furnizori. In trecut, unul dintre fondatori a spus ca pentru asta
+     foloseau API-urile interne ale furnizorilor sau extrageau datele
+     direct din paginile lor web. Nimic din toate astea nu e deschis
+     pentru altii.
+
+2. Singura cale oficiala e programul B2B, cu SDK white-label
+   Pe pagina B2B (https://pago.ro/en/b2b) scrie ca ofera:
+   - un SDK white-label nativ, pe care partenerul il integreaza in
+     aplicatia lui, cu interfata controlata de partener;
+   - facturi la peste 400 de furnizori (cu istoric si notificari la
+     scadenta), RCA, reincarcari prepay si eSIM;
+   - un proces in 4 pasi: discutie, primirea SDK-ului, integrare impreuna
+     cu echipa lor, lansare;
+   - un model de impartire a veniturilor, ISO 27001 si clauze GDPR/DORA
+     in contract;
+   - contact: adrian@pago.ro (cu subiectul "B2B Request") sau
+     https://pago.ro/en/contact
+
+   Pagina nu spune pe ce platforme merge SDK-ul (iOS, Android, web) si nu
+   are documentatie tehnica. Le primesti doar dupa discutia cu ei.
+
+CE INSEAMNA PENTRU PROIECT
+
+Asa cum iti doresti tu, "plug and play" nu se poate fara acordul Pago.
+Variantele realiste:
+
+1. Intrebati organizatorii hackathonului. Daca hackathonul e organizat de
+   Pago, ei sunt singurii care va pot da acces la un mediu de test sau la
+   SDK. Merita intrebat inainte de orice altceva.
+
+2. Pastrati mock-ul, dar puneti-l in spatele unei interfete clare.
+   IMPLEMENTATION_PLAN.md spune deja ca mock-ul imita API-ul real. Daca tot
+   accesul la date trece printr-un singur adaptor (de exemplu listarea
+   facturilor, plata, adaugarea si stergerea unei facturi), mock-ul se
+   poate inlocui usor cu SDK-ul real.
+
+3. Inversati directia: livrati voi un modul pe care Pago il poate
+   integra. Asistentul vocal ar deveni un widget sau o componenta
+   embeddable care cere datele prin adaptorul de mai sus. Pentru un pitch,
+   asta chiar inseamna "plug and play": ei il conecteaza la sistemul lor
+   in loc ca voi sa intrati in al lor.
+
+Nu va recomand sa faceti reverse-engineering pe API-ul intern al
+aplicatiei Pago. Probabil incalca termenii de utilizare si, oricum, nu ar
+fi o integrare pe care s-o poata folosi cineva in productie.
+
+Intrebare deschisa: Construiesc stratul de adaptor pentru Pago si
+varianta de widget embeddable? (Fara modificari de fisiere in aceasta
+etapa.)
+
+SURSE
+- Pago B2B: https://pago.ro/en/b2b
+- Pago - furnizori: https://www.pago.ro/en/suppliers
+- Pago - despre noi: https://www.pago.ro/en/about-us
+- Pago - termeni si conditii: https://www.pago.ro/en/terms-conditions
+- The Recursive - despre Pago: https://therecursive.com/?p=14376
+- Romania Insider - runda Series A:
+  https://romania-insider.com/pago-series-a-round-oct-2024
+- Profit.ro - integrarea cu 123Credit:
+  https://profit.ro/povesti-cu-profit/financiar/utilizatorii-aplicatiei-pago-pot-aplica-pentru-credite-de-nevoi-personale-si-ipotecare-dupa-integrarea-cu-platforma-123credit-ro-21073877
+- pkg.go.dev - pago-sh/pago-go (companie diferita):
+  https://pkg.go.dev/github.com/pago-sh/pago-go
+
+======================================================================
+UTILIZATOR
+======================================================================
+export this session in a txt file
+
+======================================================================
+ASISTENT
+======================================================================
+Am salvat sesiunea in acest fisier: sesiune-cercetare-api-pago.txt

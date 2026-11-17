@@ -1,12 +1,17 @@
 {
-  "_info": "Reguli declarative pentru călătorii. TOATE sunt EXEMPLE (verified=false) și trebuie verificate din surse oficiale înainte de a fi prezentate ca adevărate. Ca să adaugi o țară: adaugi un obiect aici; codul agentului nu se schimbă.",
+  "_info": "Reguli declarative pentru călătorii. TOATE sunt EXEMPLE (verified=false), cu prețuri estimative, și trebuie verificate din surse oficiale înainte de a fi prezentate ca adevărate. Ca să adaugi o țară: adaugi un obiect aici; codul agentului nu se schimbă. Pentru țările care nu sunt aici, asistentul răspunde din cunoștințele lui generale, marcate ca orientative.",
   "countries": [
     {
       "code": "TR",
       "name": "Turcia",
       "inName": "în Turcia",
-      "aliases": ["turcia", "turciei", "istanbul", "antalya"],
-      "verified": false,
+      "aliases": [
+        "turcia",
+        "turciei",
+        "istanbul",
+        "antalya",
+        "ankara"
+      ],
       "requirements": [
         {
           "id": "rca",
@@ -22,7 +27,7 @@
           "when": "car",
           "check": "vignette",
           "country": "BG",
-          "label": "Vinietă pentru Bulgaria (pe drum)",
+          "label": "Vinietă Bulgaria (pe drum)",
           "short": "vinieta pentru Bulgaria",
           "productType": "vignette",
           "suggestedProductId": "vinieta-bg-7z"
@@ -35,16 +40,33 @@
           "label": "Internet în Turcia (roaming sau cartelă locală)",
           "short": "internetul",
           "productType": "roaming",
-          "alternatives": ["roaming", "sim"]
+          "alternatives": [
+            "roaming",
+            "sim"
+          ]
         }
-      ]
+      ],
+      "info": {
+        "documents": "Pașaport valabil (verifică pe mae.ro dacă poți intra și cu cartea de identitate). Fără viză pentru șederi scurte.",
+        "roadTolls": "Autostrăzile și podurile din Turcia au taxă prin sistemul electronic HGS (etichetă lipită pe parbriz). Pe drum, prin Bulgaria, ai nevoie de vinietă.",
+        "tollEstimate": "Etichetă HGS de la circa 150–250 TRY plus taxele de pod/autostradă; vinietă Bulgaria de la 30 lei.",
+        "roaming": "Roamingul NU e inclus (Turcia nu e în UE): ia un pachet de roaming sau o cartelă locală."
+      },
+      "verified": false
     },
     {
       "code": "BG",
       "name": "Bulgaria",
       "inName": "în Bulgaria",
-      "aliases": ["bulgaria", "bulgariei", "sofia", "varna", "burgas"],
-      "verified": false,
+      "aliases": [
+        "bulgaria",
+        "bulgariei",
+        "sofia",
+        "varna",
+        "burgas",
+        "nisipurile de aur",
+        "sunny beach"
+      ],
       "requirements": [
         {
           "id": "rca",
@@ -65,14 +87,29 @@
           "productType": "vignette",
           "suggestedProductId": "vinieta-bg-7z"
         }
-      ]
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Vinietă electronică obligatorie pe drumurile naționale și autostrăzi; podul Giurgiu–Ruse și Calafat–Vidin au taxă separată.",
+        "tollEstimate": "Vinietă de la 30 lei (week-end); pod Giurgiu–Ruse aproximativ 15–20 lei.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
     },
     {
       "code": "GR",
       "name": "Grecia",
       "inName": "în Grecia",
-      "aliases": ["grecia", "greciei", "thassos", "salonic"],
-      "verified": false,
+      "aliases": [
+        "grecia",
+        "greciei",
+        "thassos",
+        "salonic",
+        "atena",
+        "halkidiki",
+        "creta",
+        "corfu"
+      ],
       "requirements": [
         {
           "id": "rca",
@@ -88,12 +125,831 @@
           "when": "car",
           "check": "vignette",
           "country": "BG",
-          "label": "Vinietă pentru Bulgaria (pe drum)",
+          "label": "Vinietă Bulgaria (pe drum)",
           "short": "vinieta pentru Bulgaria",
           "productType": "vignette",
           "suggestedProductId": "vinieta-bg-7z"
         }
-      ]
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Autostrăzile au taxă la puncte de plată, pe secțiuni (numerar sau card). Pe drum, prin Bulgaria, ai nevoie de vinietă.",
+        "tollEstimate": "Circa 2–4 € la fiecare punct de taxare; Salonic–Atena aproximativ 30 €.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "DE",
+      "name": "Germania",
+      "inName": "în Germania",
+      "aliases": [
+        "germania",
+        "germaniei",
+        "berlin",
+        "munchen",
+        "munich",
+        "frankfurt",
+        "hamburg",
+        "koln",
+        "stuttgart"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Germania",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă Austria (pe drum)",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Autostrăzile din Germania sunt GRATUITE pentru autoturisme. Pe drumul obișnuit (prin Ungaria și Austria) ai nevoie de vinietele acestor țări. În multe orașe intri doar cu abțibild de emisii (Umweltplakette).",
+        "tollEstimate": "Germania: 0 € pentru autostrăzi; Umweltplakette circa 10–15 €; viniete Ungaria de la 80 lei și Austria de la 65 lei.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "AT",
+      "name": "Austria",
+      "inName": "în Austria",
+      "aliases": [
+        "austria",
+        "austriei",
+        "viena",
+        "wien",
+        "salzburg",
+        "innsbruck"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Austria",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă pentru Austria",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Vinietă obligatorie pe autostrăzi și drumuri expres; unele tuneluri și trecători au taxă separată.",
+        "tollEstimate": "Vinietă 10 zile de la 65 lei (aprox. 12,80 €); tuneluri de la 10 €.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "HU",
+      "name": "Ungaria",
+      "inName": "în Ungaria",
+      "aliases": [
+        "ungaria",
+        "ungariei",
+        "budapesta",
+        "budapest",
+        "balaton",
+        "debrecen",
+        "szeged"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Ungaria",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă pentru Ungaria (e-matrica)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Vinietă electronică (e-matrica) obligatorie pe autostrăzi.",
+        "tollEstimate": "Vinietă 10 zile de la 80 lei (aprox. 6.400 HUF).",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "IT",
+      "name": "Italia",
+      "inName": "în Italia",
+      "aliases": [
+        "italia",
+        "italiei",
+        "roma",
+        "milano",
+        "venetia",
+        "florenta",
+        "napoli",
+        "toscana"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Italia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă Austria (pe drum)",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Autostrăzi cu taxă pe kilometru (pedaggio), plătită la ieșire. Pe drum ai nevoie de vinietele pentru Ungaria și Austria (sau Slovenia). Centrele vechi ale orașelor au zone ZTL interzise.",
+        "tollEstimate": "Circa 7–8 € la 100 km de autostradă; viniete Ungaria de la 80 lei și Austria de la 65 lei.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "FR",
+      "name": "Franța",
+      "inName": "în Franța",
+      "aliases": [
+        "franta",
+        "frantei",
+        "paris",
+        "nisa",
+        "coasta de azur",
+        "lyon",
+        "marsilia"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Franța",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă Austria (pe drum)",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Autostrăzi cu taxă (péage) pe kilometru. În marile orașe îți trebuie abțibild de emisii Crit'Air. Pe drum: viniete Ungaria și Austria.",
+        "tollEstimate": "Circa 8–10 € la 100 km de autostradă; Crit'Air aproximativ 4 €.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "ES",
+      "name": "Spania",
+      "inName": "în Spania",
+      "aliases": [
+        "spania",
+        "spaniei",
+        "madrid",
+        "barcelona",
+        "malaga",
+        "valencia",
+        "mallorca"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Spania",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă Austria (pe drum)",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Multe drumuri rapide (autovía) sunt gratuite; autostrăzile „AP” au taxă. Pe drum: viniete Ungaria și Austria, apoi taxe în Franța.",
+        "tollEstimate": "Autostrăzi AP circa 5–10 € la 100 km; o mare parte a rețelei e gratuită.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "HR",
+      "name": "Croația",
+      "inName": "în Croația",
+      "aliases": [
+        "croatia",
+        "croatiei",
+        "zagreb",
+        "split",
+        "dubrovnik",
+        "istria"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Croația",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Autostrăzi cu taxă pe kilometru, plătită la ieșire. Pe drum, prin Ungaria, ai nevoie de vinietă.",
+        "tollEstimate": "Circa 5–7 € la 100 km; Zagreb–Split aproximativ 25 €.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "CZ",
+      "name": "Cehia",
+      "inName": "în Cehia",
+      "aliases": [
+        "cehia",
+        "cehiei",
+        "praga",
+        "brno"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Cehia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Vinietă electronică obligatorie pe autostrăzi. Pe drum (prin Ungaria și Slovacia) ai nevoie și de vinietele lor.",
+        "tollEstimate": "Vinietă Cehia 10 zile aproximativ 270 CZK (55 lei); Slovacia 10 zile aproximativ 12 €; Ungaria de la 80 lei.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "SK",
+      "name": "Slovacia",
+      "inName": "în Slovacia",
+      "aliases": [
+        "slovacia",
+        "slovaciei",
+        "bratislava",
+        "kosice",
+        "tatra"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Slovacia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Vinietă electronică obligatorie pe autostrăzi.",
+        "tollEstimate": "Vinietă 10 zile aproximativ 12 € (60 lei); Ungaria de la 80 lei.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "SI",
+      "name": "Slovenia",
+      "inName": "în Slovenia",
+      "aliases": [
+        "slovenia",
+        "sloveniei",
+        "ljubljana",
+        "bled"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Slovenia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Vinietă electronică obligatorie pe autostrăzi; tunelul Karawanken are taxă separată.",
+        "tollEstimate": "Vinietă 7 zile aproximativ 16 € (80 lei).",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "PL",
+      "name": "Polonia",
+      "inName": "în Polonia",
+      "aliases": [
+        "polonia",
+        "poloniei",
+        "varsovia",
+        "cracovia",
+        "gdansk"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Polonia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Doar unele tronsoane de autostradă au taxă (electronic sau la barieră); restul e gratuit.",
+        "tollEstimate": "Circa 2–5 € pe tronson cu taxă.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "NL",
+      "name": "Olanda",
+      "inName": "în Olanda",
+      "aliases": [
+        "olanda",
+        "olandei",
+        "tarile de jos",
+        "amsterdam",
+        "rotterdam",
+        "haga"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Olanda",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă Austria (pe drum)",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Autostrăzile sunt gratuite; doar câteva tuneluri au taxă. Pe drum (prin Germania) autostrăzile sunt tot gratuite.",
+        "tollEstimate": "0 € pe autostrăzi; viniete pe drum în Ungaria și Austria.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "BE",
+      "name": "Belgia",
+      "inName": "în Belgia",
+      "aliases": [
+        "belgia",
+        "belgiei",
+        "bruxelles",
+        "brugge",
+        "anvers"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Belgia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă Austria (pe drum)",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Autostrăzile sunt gratuite pentru autoturisme (excepție: tunelul Liefkenshoek).",
+        "tollEstimate": "0 € pe autostrăzi; viniete pe drum în Ungaria și Austria.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "PT",
+      "name": "Portugalia",
+      "inName": "în Portugalia",
+      "aliases": [
+        "portugalia",
+        "portugaliei",
+        "lisabona",
+        "porto",
+        "algarve"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Portugalia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă Austria (pe drum)",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Autostrăzi cu taxă, multe doar electronic (Via Verde sau înregistrarea numărului).",
+        "tollEstimate": "Circa 6–9 € la 100 km.",
+        "roaming": "Roaming inclus: în UE plătești ca acasă („Roam like at home”)."
+      },
+      "verified": false
+    },
+    {
+      "code": "CH",
+      "name": "Elveția",
+      "inName": "în Elveția",
+      "aliases": [
+        "elvetia",
+        "elvetiei",
+        "zurich",
+        "geneva",
+        "berna"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Elveția",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă Austria (pe drum)",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport (țară UE / Schengen, fără viză).",
+        "roadTolls": "Vinietă anuală obligatorie pe autostrăzi (nu există variantă mai scurtă).",
+        "tollEstimate": "Vinietă anuală 40 CHF (aproximativ 210 lei).",
+        "roaming": "Roamingul NU e inclus (Elveția nu e în UE): verifică un pachet de la operator."
+      },
+      "verified": false
+    },
+    {
+      "code": "MD",
+      "name": "Republica Moldova",
+      "inName": "în Republica Moldova",
+      "aliases": [
+        "moldova",
+        "republica moldova",
+        "chisinau"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Republica Moldova",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport.",
+        "roadTolls": "Vinietă electronică obligatorie pentru mașinile înmatriculate în străinătate.",
+        "tollEstimate": "Vinietă 7 zile aproximativ 4 € (20 lei).",
+        "roaming": "Roamingul NU e inclus automat (Moldova nu e în UE): verifică un pachet de la operator."
+      },
+      "verified": false
+    },
+    {
+      "code": "RS",
+      "name": "Serbia",
+      "inName": "în Serbia",
+      "aliases": [
+        "serbia",
+        "serbiei",
+        "belgrad",
+        "novi sad"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Serbia",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        }
+      ],
+      "info": {
+        "documents": "Carte de identitate validă sau pașaport.",
+        "roadTolls": "Autostrăzi cu taxă pe kilometru, plătită la barieră.",
+        "tollEstimate": "Circa 4–6 € la 100 km.",
+        "roaming": "Roamingul NU e inclus (Serbia nu e în UE): verifică un pachet de la operator."
+      },
+      "verified": false
+    },
+    {
+      "code": "GB",
+      "name": "Marea Britanie",
+      "inName": "în Marea Britanie",
+      "aliases": [
+        "marea britanie",
+        "anglia",
+        "uk",
+        "regatul unit",
+        "londra",
+        "scotia"
+      ],
+      "requirements": [
+        {
+          "id": "rca",
+          "when": "car",
+          "check": "rca_covers",
+          "label": "RCA cu Carte Verde valabil în Marea Britanie",
+          "short": "RCA-ul",
+          "productType": "rca",
+          "suggestedProductId": "rca-12m"
+        },
+        {
+          "id": "vignette-hu",
+          "when": "car",
+          "check": "vignette",
+          "country": "HU",
+          "label": "Vinietă Ungaria (pe drum)",
+          "short": "vinieta pentru Ungaria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-hu-10z"
+        },
+        {
+          "id": "vignette-at",
+          "when": "car",
+          "check": "vignette",
+          "country": "AT",
+          "label": "Vinietă Austria (pe drum)",
+          "short": "vinieta pentru Austria",
+          "productType": "vignette",
+          "suggestedProductId": "vinieta-at-10z"
+        }
+      ],
+      "info": {
+        "documents": "Pașaport valabil și autorizație electronică de călătorie (ETA), obținută online înainte de plecare.",
+        "roadTolls": "Majoritatea drumurilor sunt gratuite; în Londra plătești taxa de congestie și zona ULEZ. Se circulă pe partea stângă.",
+        "tollEstimate": "Londra: taxa de congestie aproximativ 15 £ pe zi; ETA aproximativ 16 £.",
+        "roaming": "Roamingul NU e inclus (Marea Britanie nu e în UE): verifică un pachet de la operator."
+      },
+      "verified": false
     }
   ]
 }

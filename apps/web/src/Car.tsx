@@ -1,50 +1,78 @@
-import { useState } from "react";
-import { addDays, daysBetween, toIsoDate, type InsurancePolicy, type TravelService, type Vehicle, type Vignette } from "@pago/shared";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  addDays, daysBetween, formatLei, toIsoDate,
+  type Inspection, type InsurancePolicy, type Payment, type ProductType, type TravelService, type Vehicle, type Vignette,
+} from "@pago/shared";
+import { api } from "./api.ts";
+import { IconPlus, IllCalendar, IllGlobeSim, IllPlane, IllRoad, IllShieldCar } from "./icons.tsx";
+import { usePay } from "./pay.tsx";
 
 export interface CarData {
   vehicle: Vehicle | null;
   policies: InsurancePolicy[];
   vignettes: Vignette[];
   services: TravelService[];
+  inspections: Inspection[];
 }
 
-type DocRow = { id: string; title: string; detail: string; validUntil: string };
-
-const COUNTRY_RO: Record<string, string> = { RO: "România", BG: "Bulgaria", TR: "Turcia", GR: "Grecia" };
+const COUNTRY_RO: Record<string, string> = { RO: "România", BG: "Bulgaria", TR: "Turcia", GR: "Grecia", "EU+TR": "Europa și Turcia" };
 
 function dateRo(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}.${m}.${y}`;
 }
 
-function validity(validUntil: string) {
+type Status = { text: string; tag: string; cls: "ok" | "warn" | "bad" | "muted" };
+function validity(validUntil?: string): Status {
+  if (!validUntil) return { text: "Nu ai acest act înregistrat", tag: "Lipsește", cls: "muted" };
   const left = daysBetween(toIsoDate(new Date()), validUntil);
-  if (left < 0) return { text: `expirat pe ${dateRo(validUntil)}`, cls: "overdue" };
-  if (left <= 14) return { text: `expiră în ${left} ${left === 1 ? "zi" : "zile"}`, cls: "unpaid" };
-  return { text: `valabil până pe ${dateRo(validUntil)}`, cls: "paid" };
+  if (left < 0) return { text: `a expirat pe ${dateRo(validUntil)}`, tag: "Expirat", cls: "bad" };
+  if (left <= 30) return { text: `expiră în ${left} ${left === 1 ? "zi" : "zile"} (${dateRo(validUntil)})`, tag: "Expiră curând", cls: "warn" };
+  return { text: `valabil până pe ${dateRo(validUntil)}`, tag: "Valabil", cls: "ok" };
 }
 
-async function send(method: string, url: string, body?: unknown) {
-  const r = await fetch(url, {
-    method,
-    headers: body ? { "content-type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!r.ok) throw new Error((await r.json()).message ?? "Nu am putut salva.");
-  return r.json();
+const latest = <T extends { validUntil: string }>(xs: T[]) => [...xs].sort((a, b) => b.validUntil.localeCompare(a.validUntil))[0];
+
+/** Un rând de act: iconiță, nume, stare și acțiunile lui. */
+function DocRow(props: { icon: ReactNode; title: string; detail?: string; status: Status; children?: ReactNode }) {
+  return (
+    <li className="card doc">
+      <span className="doc-ico">{props.icon}</span>
+      <div className="doc-body">
+        <div className="doc-top">
+          <b>{props.title}</b>
+          <span className={`pill ${props.status.cls}`}>{props.status.tag}</span>
+        </div>
+        {props.detail && <span className="card-sub">{props.detail}</span>}
+        <span className="card-sub">{props.status.text}</span>
+        {props.children && <div className="doc-actions">{props.children}</div>}
+      </div>
+    </li>
+  );
 }
 
-/** Secțiunea „Mașina mea”: detaliile mașinii și actele ei. Asistentul folosește exact aceste date. */
+/** Ecranul „Mașina mea”: mașina, actele ei și plățile auto. Totul funcțional, iar asistentul folosește aceleași date. */
 export function Car(props: { data: CarData | null; onChanged: () => void }) {
+  const pay = usePay();
   const v = props.data?.vehicle ?? null;
   const [editing, setEditing] = useState(false);
   const [car, setCar] = useState({ plate: "", make: "", model: "", vin: "" });
   const [carError, setCarError] = useState<string | null>(null);
 
+  const [addingDoc, setAddingDoc] = useState(false);
   const [kind, setKind] = useState("rca");
   const [validUntil, setValidUntil] = useState(addDays(toIsoDate(new Date()), 365));
   const [coversTurkey, setCoversTurkey] = useState(false);
   const [docError, setDocError] = useState<string | null>(null);
+
+  const [itpEditing, setItpEditing] = useState(false);
+  const [itpDate, setItpDate] = useState(addDays(toIsoDate(new Date()), 730));
+  const [payments, setPayments] = useState<Payment[]>([]);
+
+  // Plățile auto (RCA, rovinietă, viniete), pentru istoricul de jos. Se reîncarcă după fiecare schimbare.
+  useEffect(() => {
+    api.get<Payment[]>("/api/payments").then(setPayments).catch(() => setPayments([]));
+  }, [props.data]);
 
   function startEdit() {
     setCar({ plate: v?.plate ?? "", make: v?.make ?? "", model: v?.model ?? "", vin: v?.vin ?? "" });
@@ -55,10 +83,11 @@ export function Car(props: { data: CarData | null; onChanged: () => void }) {
   async function saveCar(e: React.FormEvent) {
     e.preventDefault();
     try {
-      if (v) await send("PUT", `/api/vehicles/${encodeURIComponent(v.id)}`, car);
-      else await send("POST", "/api/vehicles", car);
+      if (v) await api.put(`/api/vehicles/${encodeURIComponent(v.id)}`, car);
+      else await api.post("/api/vehicles", car);
       setEditing(false);
       props.onChanged();
+      pay.toast(v ? "Am salvat datele mașinii." : "Am adăugat mașina.");
     } catch (err) {
       setCarError((err as Error).message);
     }
@@ -71,105 +100,114 @@ export function Car(props: { data: CarData | null; onChanged: () => void }) {
       kind === "rca" ? { kind: "rca", validUntil, coversTurkey }
       : kind === "ro" ? { kind: "vignette", country: "RO", validUntil }
       : kind === "bg" ? { kind: "vignette", country: "BG", validUntil }
+      : kind === "itp" ? { kind: "itp", validUntil }
       : kind === "roaming-tr" ? { kind: "roaming", country: "TR", validUntil }
       : { kind: "sim", country: "TR", validUntil };
     try {
-      await send("POST", "/api/documents", body);
+      await api.post("/api/documents", body);
+      setAddingDoc(false);
       props.onChanged();
+      pay.toast("Am adăugat actul.");
     } catch (err) {
       setDocError((err as Error).message);
     }
   }
 
-  async function removeDoc(id: string) {
-    await send("DELETE", `/api/documents/${encodeURIComponent(id)}`).catch(() => {});
-    props.onChanged();
+  async function saveItp(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      await api.post("/api/documents", { kind: "itp", validUntil: itpDate });
+      setItpEditing(false);
+      props.onChanged();
+      pay.toast("Am actualizat ITP-ul.");
+    } catch (err) {
+      pay.toast((err as Error).message);
+    }
   }
 
-  const docs: DocRow[] = props.data
-    ? [
-        ...props.data.policies.map((p) => ({
-          id: p.id,
-          title: "RCA",
-          detail: p.countries.includes("TR") ? "Carte Verde inclusiv Turcia" : "Carte Verde fără Turcia",
-          validUntil: p.validUntil,
-        })),
-        ...props.data.vignettes.map((x) => ({
-          id: x.id,
-          title: x.country === "RO" ? "Rovinietă" : `Vinietă ${COUNTRY_RO[x.country] ?? x.country}`,
-          detail: COUNTRY_RO[x.country] ?? x.country,
-          validUntil: x.validUntil,
-        })),
-        ...props.data.services.map((s) => ({
-          id: s.id,
-          title: s.type === "roaming" ? "Roaming" : "Cartelă",
-          detail: COUNTRY_RO[s.country] ?? s.country,
-          validUntil: s.validUntil,
-        })),
-      ]
-    : [];
+  async function removeDoc(id: string, what: string) {
+    try {
+      await api.del(`/api/documents/${encodeURIComponent(id)}`);
+      props.onChanged();
+      pay.toast(`Am șters ${what}.`);
+    } catch (err) {
+      pay.toast((err as Error).message);
+    }
+  }
+
+  /** Cumpărare directă (oferte → sumar → amprentă → plată). Pentru acte auto, întâi trebuie o mașină. */
+  function buy(type: ProductType, title: string, country?: string) {
+    if ((type === "rca" || type === "vignette") && !v) {
+      pay.toast("Adaugă întâi mașina, apoi poți cumpăra RCA sau rovinietă.");
+      startEdit();
+      return;
+    }
+    pay.openPicker({ type, country, title, vehicleId: v?.id });
+  }
+
+  const d = props.data;
+  const rca = d ? latest(d.policies) : undefined;
+  const rov = d ? latest(d.vignettes.filter((x) => x.country === "RO")) : undefined;
+  const bg = d ? latest(d.vignettes.filter((x) => x.country === "BG")) : undefined;
+  const itp = d ? latest(d.inspections ?? []) : undefined;
+  const rcaSt = validity(rca?.validUntil);
+  const rovSt = validity(rov?.validUntil);
+  const itpSt = validity(itp?.validUntil);
+  const autoPayments = payments.filter((p) => p.lines.some((l) => /^(rca|rovinieta|vinieta)/.test(l.refId)));
 
   return (
-    <section className="panel" aria-label="Mașina mea">
-      <h2>Mașina mea</h2>
+    <div className="screen">
+      <h1 className="page-title">Mașina mea</h1>
 
       {!editing && v && (
-        <div className="car-card">
-          <div>
-            <div className="plate">{v.plate}</div>
-            <div>{v.make} {v.model}</div>
-            {v.vin && <div className="muted small">Serie șasiu: {v.vin}</div>}
+        <div className="card car-hero">
+          <IllShieldCar size={64} />
+          <div className="car-hero-body">
+            <span className="plate">{v.plate}</span>
+            <b>{v.make} {v.model}</b>
+            {v.vin && <span className="card-sub">Serie șasiu: {v.vin}</span>}
           </div>
-          <button type="button" className="small-btn" onClick={startEdit}>Modifică</button>
+          <button className="btn-text small" onClick={startEdit}>Modifică</button>
         </div>
       )}
       {!editing && !v && (
-        <button type="button" className="wide" onClick={startEdit}>+ Adaugă mașina</button>
+        <div className="card row-cta">
+          <div>
+            <div className="card-title">Adaugă mașina</div>
+            <div className="card-sub">Preluăm automat toate datele de expirare ✨</div>
+          </div>
+          <button className="btn-green" onClick={startEdit}>Continuă</button>
+        </div>
       )}
 
       {editing && (
-        <form className="form" onSubmit={saveCar}>
-          <label>Număr de înmatriculare<input value={car.plate} onChange={(e) => setCar({ ...car, plate: e.target.value })} placeholder="ex. B-123-ABC" required maxLength={15} /></label>
+        <form className="card form" onSubmit={saveCar}>
+          <div className="card-title">{v ? "Modifică mașina" : "Adaugă mașina"}</div>
+          <label>Număr de înmatriculare<input value={car.plate} onChange={(e) => setCar({ ...car, plate: e.target.value })} placeholder="ex. B-123-ABC" required maxLength={15} autoCapitalize="characters" /></label>
           <label>Marcă<input value={car.make} onChange={(e) => setCar({ ...car, make: e.target.value })} placeholder="ex. Dacia" required maxLength={30} /></label>
           <label>Model<input value={car.model} onChange={(e) => setCar({ ...car, model: e.target.value })} placeholder="ex. Logan" required maxLength={30} /></label>
-          <label>Serie șasiu (opțional)<input value={car.vin} onChange={(e) => setCar({ ...car, vin: e.target.value })} maxLength={17} /></label>
+          <label>Serie șasiu (opțional)<input value={car.vin} onChange={(e) => setCar({ ...car, vin: e.target.value })} maxLength={17} autoCapitalize="characters" /></label>
           {carError && <p className="error">{carError}</p>}
-          <div className="row">
-            <button type="submit" className="wide">Salvează</button>
-            <button type="button" className="small-btn" onClick={() => setEditing(false)}>Renunță</button>
-          </div>
+          <button type="submit" className="btn-green big">Salvează</button>
+          <button type="button" className="btn-text" onClick={() => setEditing(false)}>Renunță</button>
         </form>
       )}
 
-      <h3>Acte</h3>
-      {docs.length === 0 && <p className="muted">Nu ai niciun act înregistrat.</p>}
-      <ul className="bill-list">
-        {docs.map((d) => {
-          const val = validity(d.validUntil);
-          return (
-            <li key={d.id} className="bill">
-              <div className="bill-main">
-                <b>{d.title}</b> · {d.detail}
-                <div className="muted small">{val.text}</div>
-              </div>
-              <div className="bill-side">
-                <span className={`tag ${val.cls}`}>{val.cls === "overdue" ? "Expirat" : val.cls === "unpaid" ? "Expiră curând" : "Valabil"}</span>
-                <button type="button" className="small-btn" onClick={() => removeDoc(d.id)} aria-label={`Șterge ${d.title} ${d.detail}`}>Șterge</button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="section-row">
+        <h2 className="section-label">Acte</h2>
+        <button className="pill-btn" onClick={() => setAddingDoc((x) => !x)} aria-expanded={addingDoc}><IconPlus size={16} /> Am deja un act</button>
+      </div>
 
-      <details className="add-bill">
-        <summary>+ Adaugă un act pe care îl ai deja</summary>
-        <form className="form" onSubmit={addDoc}>
+      {addingDoc && (
+        <form className="card form" onSubmit={addDoc}>
+          <div className="card-title">Un act pe care îl ai deja</div>
           <label>
             Tip
             <select value={kind} onChange={(e) => setKind(e.target.value)}>
               <option value="rca">RCA</option>
               <option value="ro">Rovinietă (România)</option>
               <option value="bg">Vinietă Bulgaria</option>
+              <option value="itp">ITP</option>
               <option value="roaming-tr">Roaming Turcia</option>
               <option value="sim-tr">Cartelă Turcia</option>
             </select>
@@ -182,9 +220,76 @@ export function Car(props: { data: CarData | null; onChanged: () => void }) {
             </label>
           )}
           {docError && <p className="error">{docError}</p>}
-          <button type="submit" className="wide">Adaugă actul</button>
+          <button type="submit" className="btn-green big">Adaugă actul</button>
+          <button type="button" className="btn-text" onClick={() => setAddingDoc(false)}>Renunță</button>
         </form>
-      </details>
-    </section>
+      )}
+
+      <ul className="doc-list">
+        <DocRow
+          icon={<IllShieldCar size={34} />}
+          title="RCA"
+          detail={rca ? (rca.countries.includes("TR") ? "Carte Verde inclusiv Turcia" : "Carte Verde fără Turcia") : undefined}
+          status={rcaSt}
+        >
+          <button className="btn-green small" onClick={() => buy("rca", "Oferte RCA")}>{rca ? "Reînnoiește" : "Cumpără RCA"}</button>
+          {rca && <button className="btn-text small" onClick={() => removeDoc(rca.id, "RCA-ul")}>Șterge</button>}
+        </DocRow>
+
+        <DocRow icon={<IllRoad size={34} />} title="Rovinietă" detail="România" status={rovSt}>
+          <button className="btn-green small" onClick={() => buy("vignette", "Rovinietă", "RO")}>{rov ? "Reînnoiește" : "Cumpără rovinietă"}</button>
+          {rov && <button className="btn-text small" onClick={() => removeDoc(rov.id, "rovinieta")}>Șterge</button>}
+        </DocRow>
+
+        <DocRow icon={<IllCalendar size={34} />} title="ITP" detail="Inspecția tehnică periodică" status={itpSt}>
+          {!itpEditing ? (
+            <>
+              <button className="btn-green small" onClick={() => { setItpDate(addDays(toIsoDate(new Date()), 730)); setItpEditing(true); }}>
+                {itp ? "Am făcut ITP-ul" : "Adaugă ITP"}
+              </button>
+              {itp && <button className="btn-text small" onClick={() => removeDoc(itp.id, "ITP-ul")}>Șterge</button>}
+            </>
+          ) : (
+            <form className="inline-form" onSubmit={saveItp}>
+              <label>Valabil până pe<input type="date" value={itpDate} onChange={(e) => setItpDate(e.target.value)} required /></label>
+              <button type="submit" className="btn-green small">Salvează</button>
+              <button type="button" className="btn-text small" onClick={() => setItpEditing(false)}>Renunță</button>
+            </form>
+          )}
+        </DocRow>
+
+        <DocRow icon={<IllRoad size={34} />} title="Vinietă Bulgaria" detail="Pentru drumul spre Bulgaria, Grecia, Turcia" status={validity(bg?.validUntil)}>
+          <button className="btn-green small" onClick={() => buy("vignette", "Vinietă Bulgaria", "BG")}>{bg ? "Reînnoiește" : "Cumpără"}</button>
+          {bg && <button className="btn-text small" onClick={() => removeDoc(bg.id, "vinieta")}>Șterge</button>}
+        </DocRow>
+
+        {d?.services.map((s) => {
+          const title = s.type === "insurance" ? "Asigurare de călătorie" : s.type === "roaming" ? "Roaming" : "Cartelă";
+          const detail = `${COUNTRY_RO[s.country] ?? s.country}${s.persons ? ` · ${s.persons} ${s.persons === 1 ? "persoană" : "persoane"}` : ""}`;
+          return (
+            <DocRow key={s.id} icon={s.type === "insurance" ? <IllPlane size={34} /> : <IllGlobeSim size={34} />} title={title} detail={detail} status={validity(s.validUntil)}>
+              <button className="btn-text small" onClick={() => removeDoc(s.id, title.toLowerCase())}>Șterge</button>
+            </DocRow>
+          );
+        })}
+      </ul>
+
+      <h2 className="section-label">Plăți auto</h2>
+      {autoPayments.length === 0 ? (
+        <p className="card card-sub">Încă nu ai plătit nimic pentru mașină prin Pago.</p>
+      ) : (
+        <ul className="card list-rows">
+          {autoPayments.map((p) => (
+            <li key={p.id}>
+              <div>
+                <b>{p.lines.map((l) => l.label).join(", ")}</b>
+                <span className="card-sub">{new Date(p.createdAt).toLocaleString("ro-RO", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+              <b className="amount">{formatLei(p.total)}</b>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

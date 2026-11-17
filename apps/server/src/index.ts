@@ -1,4 +1,14 @@
+import tls from "node:tls";
 import { buildApp } from "./app.ts";
+
+// Node are lista lui de certificate și NU are încredere în cele instalate în Windows. Pe calculatoare cu
+// antivirus care verifică HTTPS (sau proxy de firmă), apelurile către Groq / Anthropic picau cu
+// „unable to verify the first certificate”. Adăugăm și certificatele sistemului, ca browserul.
+try {
+  tls.setDefaultCACertificates([...tls.getCACertificates("default"), ...tls.getCACertificates("system")]);
+} catch {
+  // Node mai vechi (fără aceste funcții) → rămân certificatele implicite.
+}
 
 // Citește `.env` din rădăcina proiectului, dacă există (cheia API stă doar aici, pe server).
 try {

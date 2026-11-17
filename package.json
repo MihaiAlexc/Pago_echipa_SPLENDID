@@ -12,7 +12,10 @@
     "test:watch": "vitest",
     "test:llm": "vitest run --config vitest.llm.config.ts",
     "tunnel": "cloudflared tunnel --url http://localhost:5173 --no-autoupdate",
-    "build": "npm run build -w @pago/server && npm run build -w @pago/web"
+    "build": "npm run build -w @pago/server && npm run build -w @pago/web",
+    "android:apk": "npm run android:apk -w @pago/web",
+    "android:install": "npm run android:install -w @pago/web",
+    "tunnel:api": "cloudflared tunnel --url http://127.0.0.1:3001 --no-autoupdate"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

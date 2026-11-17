@@ -53,16 +53,26 @@ export interface Vignette {
   validUntil: IsoDate;
 }
 
-/** Pachet de roaming sau cartelă pentru o țară. */
+/** Pachet de roaming, cartelă sau asigurare de călătorie pentru o țară. */
 export interface TravelService {
   id: string;
-  type: "roaming" | "sim";
+  type: "roaming" | "sim" | "insurance";
+  /** Pentru asigurarea de călătorie: câte persoane acoperă. */
+  persons?: number;
   country: CountryCode;
   validFrom: IsoDate;
   validUntil: IsoDate;
 }
 
-export type ProductType = "rca" | "vignette" | "roaming" | "sim";
+/** ITP (inspecția tehnică periodică): o ții minte ca să știi când expiră; nu se cumpără online. */
+export interface Inspection {
+  id: string;
+  vehicleId: string;
+  validFrom: IsoDate;
+  validUntil: IsoDate;
+}
+
+export type ProductType = "rca" | "vignette" | "roaming" | "sim" | "travel";
 
 export interface Product {
   id: string;
@@ -74,12 +84,17 @@ export interface Product {
   country?: CountryCode;
   /** Pentru RCA: țările acoperite. */
   countries?: CountryCode[];
+  /** Asigurarea de călătorie: prețul e PE PERSOANĂ (totalul: priceForPersons). */
+  perPerson?: boolean;
+  /** Asigurarea de călătorie: nivelul pachetului și ce acoperă. */
+  tier?: "Basic" | "Standard" | "Premium";
+  coverage?: string;
 }
 
 /** Ce vrea utilizatorul să plătească. Suma NU vine de aici, ci din date. */
 export type PaymentRequestItem =
   | { kind: "bill"; billId: string }
-  | { kind: "product"; productId: string; vehicleId?: string };
+  | { kind: "product"; productId: string; vehicleId?: string; persons?: number };
 
 export interface PaymentLine {
   kind: "bill" | "product";
@@ -118,6 +133,7 @@ export interface PagoData {
   policies: InsurancePolicy[];
   vignettes: Vignette[];
   services: TravelService[];
+  inspections: Inspection[];
   products: Product[];
   payments: Payment[];
 }

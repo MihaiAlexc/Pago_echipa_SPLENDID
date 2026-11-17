@@ -13,6 +13,7 @@ import {
 /** Țări acoperite de un RCA obișnuit (exemplu simplificat, fără Turcia). [de verificat] */
 export const STANDARD_RCA_COUNTRIES: CountryCode[] = [
   "RO", "BG", "HU", "MD", "GR", "AT", "DE", "IT", "FR", "ES",
+  "HR", "CZ", "SK", "SI", "PL", "NL", "BE", "PT", "CH", "RS", "GB",
 ];
 
 /** Același RCA, extins și pentru Turcia. */
@@ -31,9 +32,23 @@ export const CATALOG: Product[] = [
   { id: "vinieta-bg-7z", type: "vignette", name: "Vinietă Bulgaria 7 zile", price: 75, durationDays: 7, country: "BG" },
   { id: "vinieta-bg-30z", type: "vignette", name: "Vinietă Bulgaria 30 de zile", price: 140, durationDays: 30, country: "BG" },
 
+  // Pe drumul spre vestul Europei (prețuri estimative). [de verificat]
+  { id: "vinieta-hu-10z", type: "vignette", name: "Vinietă Ungaria 10 zile", price: 80, durationDays: 10, country: "HU" },
+  { id: "vinieta-hu-1l", type: "vignette", name: "Vinietă Ungaria 1 lună", price: 110, durationDays: 31, country: "HU" },
+  { id: "vinieta-at-10z", type: "vignette", name: "Vinietă Austria 10 zile", price: 65, durationDays: 10, country: "AT" },
+  { id: "vinieta-at-2l", type: "vignette", name: "Vinietă Austria 2 luni", price: 160, durationDays: 61, country: "AT" },
+
   { id: "roaming-tr-7z", type: "roaming", name: "Pachet roaming Turcia 7 zile", price: 35, durationDays: 7, country: "TR" },
   { id: "roaming-tr-15z", type: "roaming", name: "Pachet roaming Turcia 15 zile", price: 60, durationDays: 15, country: "TR" },
   { id: "cartela-tr", type: "sim", name: "Cartelă prepay Turcia", price: 90, durationDays: 30, country: "TR" },
+
+  // Asigurare de călătorie: preț PE PERSOANĂ (10% reducere de la 4 persoane, vezi priceForPersons). Valabilă în Europa și Turcia.
+  { id: "travel-basic-7z", type: "travel", tier: "Basic", name: "Asigurare de călătorie Basic 7 zile", price: 29, durationDays: 7, perPerson: true, coverage: "Cheltuieli medicale până la 30.000 €" },
+  { id: "travel-standard-7z", type: "travel", tier: "Standard", name: "Asigurare de călătorie Standard 7 zile", price: 45, durationDays: 7, perPerson: true, coverage: "Medicale 50.000 € + bagaje" },
+  { id: "travel-premium-7z", type: "travel", tier: "Premium", name: "Asigurare de călătorie Premium 7 zile", price: 69, durationDays: 7, perPerson: true, coverage: "Medicale 100.000 € + bagaje + anularea călătoriei" },
+  { id: "travel-basic-15z", type: "travel", tier: "Basic", name: "Asigurare de călătorie Basic 15 zile", price: 49, durationDays: 15, perPerson: true, coverage: "Cheltuieli medicale până la 30.000 €" },
+  { id: "travel-standard-15z", type: "travel", tier: "Standard", name: "Asigurare de călătorie Standard 15 zile", price: 75, durationDays: 15, perPerson: true, coverage: "Medicale 50.000 € + bagaje" },
+  { id: "travel-premium-15z", type: "travel", tier: "Premium", name: "Asigurare de călătorie Premium 15 zile", price: 115, durationDays: 15, perPerson: true, coverage: "Medicale 100.000 € + bagaje + anularea călătoriei" },
 ];
 
 /** Povestea principală: Maria, cu facturi de plată și RCA aproape expirat. */
@@ -57,6 +72,10 @@ function demo(today: IsoDate): PagoData {
       { id: "vg-ro", vehicleId: "v1", country: "RO", validFrom: addDays(today, -345), validUntil: addDays(today, 20) },
     ],
     services: [],
+    // ITP: expiră în 40 de zile (apare la „Mașina mea”, cu buton de actualizare după inspecție).
+    inspections: [
+      { id: "itp-1", vehicleId: "v1", validFrom: addDays(today, -690), validUntil: addDays(today, 40) },
+    ],
     products: CATALOG,
     payments: [],
   };
@@ -81,6 +100,7 @@ export function createSeed(variant: SeedVariant, today: IsoDate): PagoData {
         { id: "vg-ro", vehicleId: "v1", country: "RO", validFrom: addDays(today, -165), validUntil: addDays(today, 200) },
         { id: "vg-bg", vehicleId: "v1", country: "BG", validFrom: today, validUntil: addDays(today, 30) },
       ];
+      data.inspections = [{ id: "itp-1", vehicleId: "v1", validFrom: addDays(today, -100), validUntil: addDays(today, 630) }];
       return data;
 
     case "rca-expired":
